@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   User,
   Receipt,
@@ -214,69 +214,82 @@ const SearchableItemInput = ({
           <div className="max-h-48 overflow-y-auto">
             {filteredCatalog.length > 0 ? (
               <ul className="py-1" ref={listRef}>
-                {filteredCatalog.map((catItem, idx) => (
-                  <li
-                    key={catItem.id}
-                    className={`px-5 py-3 cursor-pointer border-b border-transparent last:border-0 transition-colors ${idx === selectedIndex ? "bg-[#FFFFFF] border-l-4 border-l-[#DC2626]" : "hover:bg-[#FFFFFF] border-l-4 border-l-transparent"}`}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      updateItem(item.id, "name", catItem.name);
-                      updateItem(item.id, "desc", catItem.desc || "");
-                      updateItem(item.id, "product_id", catItem.productId || null);
-                      if (catItem.price !== undefined) {
-                        updateItem(item.id, "price", catItem.price);
-                      }
-                      setIsOpen(false);
-                      setTimeout(() => {
-                        const priceInput = document.getElementById(
-                          `price-${item.id}`,
-                        );
-                        if (priceInput) priceInput.focus();
-                      }, 50);
-                    }}
-                    onTouchStart={(e) => {
-                      e.preventDefault();
-                      updateItem(item.id, "name", catItem.name);
-                      updateItem(item.id, "desc", catItem.desc || "");
-                      updateItem(item.id, "product_id", catItem.productId || null);
-                      if (catItem.price !== undefined) {
-                        updateItem(item.id, "price", catItem.price);
-                      }
-                      setIsOpen(false);
-                      setTimeout(() => {
-                        const priceInput = document.getElementById(
-                          `price-${item.id}`,
-                        );
-                        if (priceInput) priceInput.focus();
-                      }, 50);
-                    }}
-                    onClick={() => {
-                      updateItem(item.id, "name", catItem.name);
-                      updateItem(item.id, "desc", catItem.desc || "");
-                      updateItem(item.id, "product_id", catItem.productId || null);
-                      if (catItem.price !== undefined) {
-                        updateItem(item.id, "price", catItem.price);
-                      }
-                      setIsOpen(false);
-                      setTimeout(() => {
-                        const priceInput = document.getElementById(
-                          `price-${item.id}`,
-                        );
-                        if (priceInput) priceInput.focus();
-                      }, 50);
-                    }}
-                    onMouseEnter={() => setSelectedIndex(idx)}
-                  >
-                    <div className="text-sm font-bold text-[#000000]">
-                      {catItem.name}
-                    </div>
-                    {catItem.desc && (
-                      <div className="text-[11px] font-semibold uppercase tracking-wider text-[#000000] mt-1">
-                        {catItem.desc}
+                {filteredCatalog.map((catItem, idx) => {
+                  const isOutOfStock = catItem.stockQuantity === 0;
+                  return (
+                    <li
+                      key={catItem.id}
+                      className={`px-5 py-3 border-b border-transparent last:border-0 transition-colors ${
+                        isOutOfStock ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                      } ${idx === selectedIndex && !isOutOfStock ? "bg-[#FFFFFF] border-l-4 border-l-[#DC2626]" : !isOutOfStock ? "hover:bg-[#FFFFFF] border-l-4 border-l-transparent" : "border-l-4 border-l-transparent"}`}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        if (isOutOfStock) return;
+                        updateItem(item.id, "name", catItem.name);
+                        updateItem(item.id, "desc", catItem.desc || "");
+                        updateItem(item.id, "product_id", catItem.productId || null);
+                        if (catItem.price !== undefined) {
+                          updateItem(item.id, "price", catItem.price);
+                        }
+                        setIsOpen(false);
+                        setTimeout(() => {
+                          const priceInput = document.getElementById(
+                            `price-${item.id}`,
+                          );
+                          if (priceInput) priceInput.focus();
+                        }, 50);
+                      }}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        if (isOutOfStock) return;
+                        updateItem(item.id, "name", catItem.name);
+                        updateItem(item.id, "desc", catItem.desc || "");
+                        updateItem(item.id, "product_id", catItem.productId || null);
+                        if (catItem.price !== undefined) {
+                          updateItem(item.id, "price", catItem.price);
+                        }
+                        setIsOpen(false);
+                        setTimeout(() => {
+                          const priceInput = document.getElementById(
+                            `price-${item.id}`,
+                          );
+                          if (priceInput) priceInput.focus();
+                        }, 50);
+                      }}
+                      onClick={() => {
+                        if (isOutOfStock) return;
+                        updateItem(item.id, "name", catItem.name);
+                        updateItem(item.id, "desc", catItem.desc || "");
+                        updateItem(item.id, "product_id", catItem.productId || null);
+                        if (catItem.price !== undefined) {
+                          updateItem(item.id, "price", catItem.price);
+                        }
+                        setIsOpen(false);
+                        setTimeout(() => {
+                          const priceInput = document.getElementById(
+                            `price-${item.id}`,
+                          );
+                          if (priceInput) priceInput.focus();
+                        }, 50);
+                      }}
+                      onMouseEnter={() => !isOutOfStock && setSelectedIndex(idx)}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm font-bold text-[#000000]">
+                          {catItem.name}
+                        </div>
+                        <div className={`text-[10px] font-bold ${isOutOfStock ? 'text-[#E11D48]' : 'text-green-600'}`}>
+                          {isOutOfStock ? 'Out of Stock' : `Stock: ${catItem.stockQuantity}`}
+                        </div>
                       </div>
-                    )}
-                  </li>
-                ))}
+                      {catItem.desc && (
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-[#000000] mt-1">
+                          {catItem.desc}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <div className="px-5 py-6 text-sm text-[#000000] text-center font-semibold">
@@ -484,6 +497,7 @@ export default function POSBilling() {
   const [newCatName, setNewCatName] = useState("");
   const [newCatDesc, setNewCatDesc] = useState("");
   const [newCatPrice, setNewCatPrice] = useState<number | "">("");
+  const [newCatCostPrice, setNewCatCostPrice] = useState<number | "">("");
   const [newCatExpiry, setNewCatExpiry] = useState<string>("");
   const [newCatStock, setNewCatStock] = useState<number | "">("");
   const [newCatThreshold, setNewCatThreshold] = useState<number | "">(10);
@@ -492,6 +506,9 @@ export default function POSBilling() {
   const [newCatHsn, setNewCatHsn] = useState<string>("");
   const [inventorySearch, setInventorySearch] = useState<string>("");
   const [alertedIds, setAlertedIds] = useState<Set<string>>(new Set());
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [showBatchModal, setShowBatchModal] = useState<boolean>(false);
+  const [batchTargetProductId, setBatchTargetProductId] = useState<string | null>(null);
 
   const [activeCatalogRowId, setActiveCatalogRowId] = useState<string | null>(
     null,
@@ -586,6 +603,30 @@ export default function POSBilling() {
     );
   };
 
+  const handleQtyChange = (id: string, newQty: number) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        let finalQty = Math.max(1, newQty);
+        // Find catalog item by product_id OR by exact/case-insensitive name
+        const catItem = catalog.find(
+          (c) =>
+            (item.product_id && (c.id === item.product_id || c.productId === item.product_id)) ||
+            (item.name && c.name.trim().toLowerCase() === item.name.trim().toLowerCase())
+        );
+        if (catItem && typeof catItem.stockQuantity === 'number') {
+          if (newQty > catItem.stockQuantity) {
+            alert(`Cannot add more than available stock (${catItem.stockQuantity}) for "${catItem.name}"`);
+            finalQty = catItem.stockQuantity;
+          } else {
+            finalQty = newQty;
+          }
+        }
+        return { ...item, qty: finalQty };
+      })
+    );
+  };
+
   const clearOrder = () => {
     setItems([
       { id: Math.random().toString(), name: "", desc: "", price: 0, qty: 1 },
@@ -596,6 +637,7 @@ export default function POSBilling() {
     setNewCatName("");
     setNewCatDesc("");
     setNewCatPrice("");
+    setNewCatCostPrice("");
     setNewCatExpiry("");
     setNewCatStock("");
     setNewCatThreshold(10);
@@ -680,7 +722,7 @@ export default function POSBilling() {
         batch_no: newCatBatch || null,
         manufacturer: newCatManufacturer || null,
         hsn_code: newCatHsn || null,
-        cost_price: newCatPrice === "" ? 0 : Number(newCatPrice),
+        cost_price: newCatCostPrice === "" ? 0 : Number(newCatCostPrice),
         selling_price: newCatPrice === "" ? 0 : Number(newCatPrice),
         stock_quantity: newCatStock === "" ? 0 : Number(newCatStock),
         expiry_date: newCatExpiry,
@@ -702,6 +744,32 @@ export default function POSBilling() {
 
       resetCatalogForm();
       setShowCatalogModal(false);
+    }
+  };
+
+  const handleAddBatchSubmit = async () => {
+    if (!batchTargetProductId) return;
+    try {
+      const batchPayload = {
+        batch_no: newCatBatch || null,
+        manufacturer: null,
+        hsn_code: null,
+        cost_price: newCatCostPrice === "" ? 0 : Number(newCatCostPrice),
+        selling_price: newCatPrice === "" ? 0 : Number(newCatPrice),
+        stock_quantity: newCatStock === "" ? 0 : Number(newCatStock),
+        expiry_date: newCatExpiry || "",
+      };
+      await createBatch(batchTargetProductId, batchPayload);
+      
+      const data = await fetchProducts();
+      setCatalog(data.map(productToCatalogItem));
+      
+      setShowBatchModal(false);
+      resetCatalogForm();
+      setBatchTargetProductId(null);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add batch.");
     }
   };
 
@@ -1601,60 +1669,72 @@ export default function POSBilling() {
       {/* Catalog Modal */}
       {showCatalogModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-[#FFFFFF] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.4)] w-full max-w-md overflow-hidden transform scale-100 animate-in zoom-in-95 duration-200">
-            <div className="px-8 py-6 flex justify-between items-center bg-[#FFFFFF]">
-              <h3 className="font-bold text-lg text-[#000000] flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#DC2626]/10 rounded-lg flex items-center justify-center">
-                  <PackagePlus className="w-5 h-5 text-[#DC2626]" />
+          <div className="bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-black/10 w-full max-w-md overflow-hidden transform animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-5 bg-white border-b border-black/10 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#DC2626]/10 rounded-xl flex items-center justify-center text-[#DC2626]">
+                  <PackagePlus className="w-5 h-5" />
                 </div>
-                {editingCatalogId ? "Edit Catalog Item" : "Add New Item"}
-              </h3>
+                <div>
+                  <h3 className="font-extrabold text-base text-black tracking-tight">
+                    {editingCatalogId ? "Edit Catalog Item" : "Add New Medicine"}
+                  </h3>
+                  <p className="text-[11px] text-gray-500 font-medium">
+                    {editingCatalogId ? "Modify product parameters" : "Register product into catalog"}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => {
                   resetCatalogForm();
                   setEditingCatalogId(null);
                   setShowCatalogModal(false);
                 }}
-                className="w-8 h-8 flex items-center justify-center bg-[#000000] text-[#FFFFFF] hover:bg-black/80 rounded-md transition-colors cursor-pointer"
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="px-8 py-6 space-y-4 max-h-[80vh] overflow-y-auto">
+
+            {/* Form Content */}
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto bg-white">
               <div>
-                <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
-                  Product Name <span className="text-[#E11D48]">*</span>
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                  Product Name <span className="text-[#DC2626]">*</span>
                 </label>
                 <input
                   type="text"
                   placeholder="e.g., Paracetamol 500mg"
-                  className="minimal-input font-bold text-sm"
+                  className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   autoFocus
                 />
               </div>
+
               <div>
-                <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
                   Description (Optional)
                 </label>
                 <input
                   type="text"
                   placeholder="e.g., Fever & pain relief tablet"
-                  className="minimal-input text-sm"
+                  className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors shadow-xs"
                   value={newCatDesc}
                   onChange={(e) => setNewCatDesc(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
-                    Price (₹) <span className="text-[#E11D48]">*</span>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Selling Price (₹) <span className="text-[#DC2626]">*</span>
                   </label>
                   <input
                     type="number"
-                    placeholder="e.g., 30"
-                    className="minimal-input text-sm font-semibold"
+                    placeholder="0.00"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
                     value={newCatPrice}
                     onWheel={(e) => e.currentTarget.blur()}
                     onChange={(e) =>
@@ -1664,29 +1744,31 @@ export default function POSBilling() {
                     }
                   />
                 </div>
+
                 <div>
-                  <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
-                    Expiry Date <span className="text-[#E11D48]">*</span>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Expiry Date <span className="text-[#DC2626]">*</span>
                   </label>
                   <input
                     type="date"
                     required
-                    className="minimal-input text-sm font-semibold"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors cursor-pointer shadow-xs"
                     value={newCatExpiry}
                     onChange={(e) => setNewCatExpiry(e.target.value)}
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
                     Stock Quantity
                   </label>
                   <input
                     type="number"
                     min={0}
-                    placeholder="e.g., 100"
-                    className="minimal-input text-sm font-semibold"
+                    placeholder="0"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
                     value={newCatStock}
                     onWheel={(e) => e.currentTarget.blur()}
                     onChange={(e) =>
@@ -1696,15 +1778,16 @@ export default function POSBilling() {
                     }
                   />
                 </div>
+
                 <div>
-                  <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
                     Low-Stock Alert At
                   </label>
                   <input
                     type="number"
                     min={0}
-                    placeholder="e.g., 10"
-                    className="minimal-input text-sm font-semibold"
+                    placeholder="10"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
                     value={newCatThreshold}
                     onWheel={(e) => e.currentTarget.blur()}
                     onChange={(e) =>
@@ -1715,49 +1798,169 @@ export default function POSBilling() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
-                    Batch No.
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Batch Number
                   </label>
                   <input
                     type="text"
                     placeholder="e.g., B12345"
-                    className="minimal-input text-sm"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors shadow-xs"
                     value={newCatBatch}
                     onChange={(e) => setNewCatBatch(e.target.value)}
                   />
                 </div>
+
                 <div>
-                  <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
                     HSN Code
                   </label>
                   <input
                     type="text"
                     placeholder="e.g., 3004"
-                    className="minimal-input text-sm"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors shadow-xs"
                     value={newCatHsn}
                     onChange={(e) => setNewCatHsn(e.target.value)}
                   />
                 </div>
               </div>
+
               <div>
-                <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
                   Manufacturer
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g., Cipla"
-                  className="minimal-input text-sm"
+                  placeholder="e.g., Cipla Ltd."
+                  className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors shadow-xs"
                   value={newCatManufacturer}
                   onChange={(e) => setNewCatManufacturer(e.target.value)}
                 />
               </div>
+
               <button
                 onClick={addToCatalog}
-                className="w-full py-4 mt-2 bg-[#1E40AF] hover:bg-[#DC2626] text-[#FFFFFF] rounded-lg font-bold text-xs uppercase tracking-[0.15em] transition-colors cursor-pointer"
+                className="w-full py-3.5 mt-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
               >
-                {editingCatalogId ? "Save Changes" : "Save to Inventory"}
+                <PackagePlus className="w-4 h-4" />
+                {editingCatalogId ? "Save Changes" : "Save Product to Catalog"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Batch Modal */}
+      {showBatchModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-black/10 w-full max-w-md overflow-hidden transform animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-5 bg-white border-b border-black/10 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#DC2626]/10 rounded-xl flex items-center justify-center text-[#DC2626]">
+                  <PackagePlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-black tracking-tight">Add New Batch</h3>
+                  <p className="text-[11px] text-gray-500 font-medium">Record batch stock & arrival info</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  resetCatalogForm();
+                  setBatchTargetProductId(null);
+                  setShowBatchModal(false);
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Body - Clear 2-column layout */}
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto bg-white">
+              {/* Row 1: Pricing */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Cost Price (₹)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
+                    value={newCatCostPrice}
+                    onChange={(e) => setNewCatCostPrice(e.target.value ? Number(e.target.value) : "")}
+                    onWheel={(e) => e.currentTarget.blur()}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Selling Price (₹)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
+                    value={newCatPrice}
+                    onChange={(e) => setNewCatPrice(e.target.value ? Number(e.target.value) : "")}
+                    onWheel={(e) => e.currentTarget.blur()}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Stock Quantity & Batch Number */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Stock Quantity
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
+                    value={newCatStock}
+                    onChange={(e) => setNewCatStock(e.target.value ? Number(e.target.value) : "")}
+                    onWheel={(e) => e.currentTarget.blur()}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Batch Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., BATCH-002"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors shadow-xs"
+                    value={newCatBatch}
+                    onChange={(e) => setNewCatBatch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Expiry Date */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                  Expiry Date <span className="text-[#DC2626]">*</span>
+                </label>
+                <input
+                  type="date"
+                  className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors cursor-pointer shadow-xs"
+                  value={newCatExpiry}
+                  onChange={(e) => setNewCatExpiry(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                onClick={handleAddBatchSubmit}
+                className="w-full py-3.5 mt-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
+              >
+                <PackagePlus className="w-4 h-4" />
+                Save New Batch
               </button>
             </div>
           </div>
@@ -2253,71 +2456,89 @@ export default function POSBilling() {
                                             catalogSearch.toLowerCase(),
                                           ),
                                       )
-                                      .map((catItem) => (
-                                        <div
-                                          key={catItem.id}
-                                          className="w-full flex items-center border-b border-transparent last:border-0 hover:bg-[#FFFFFF] transition-colors"
-                                        >
-                                          <button
-                                            className="flex-1 text-left px-4 py-2.5 flex flex-col cursor-pointer"
-                                            onClick={() => {
-                                              updateItem(
-                                                item.id,
-                                                "name",
-                                                catItem.name,
-                                              );
-                                              if (catItem.price !== undefined) {
+                                      .map((catItem) => {
+                                        const isOutOfStock = catItem.stockQuantity === 0;
+                                        return (
+                                          <div
+                                            key={catItem.id}
+                                            className={`w-full flex items-center border-b border-transparent last:border-0 hover:bg-[#FFFFFF] transition-colors ${
+                                              isOutOfStock ? "opacity-50" : ""
+                                            }`}
+                                          >
+                                            <button
+                                              className={`flex-1 text-left px-4 py-2.5 flex flex-col ${
+                                                isOutOfStock ? "cursor-not-allowed" : "cursor-pointer"
+                                              }`}
+                                              onClick={() => {
+                                                if (isOutOfStock) return;
                                                 updateItem(
                                                   item.id,
-                                                  "price",
-                                                  catItem.price,
+                                                  "name",
+                                                  catItem.name,
                                                 );
-                                              }
-                                              setActiveCatalogRowId(null);
-                                            }}
-                                          >
-                                            <span className="text-xs font-bold text-[#000000]">
-                                              {catItem.name}
-                                            </span>
-                                            {catItem.desc && (
-                                              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#000000] mt-0.5">
-                                                {catItem.desc}
-                                              </span>
-                                            )}
-                                            {catItem.price !== undefined && (
-                                              <span className="text-[10px] font-bold text-[#DC2626] mt-0.5">
-                                                ₹{catItem.price}
-                                              </span>
-                                            )}
-                                          </button>
-                                          <div className="flex shrink-0">
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                openEditCatalog(catItem, item.id);
+                                                updateItem(
+                                                  item.id,
+                                                  "product_id",
+                                                  catItem.productId || catItem.id,
+                                                );
+                                                if (catItem.price !== undefined) {
+                                                  updateItem(
+                                                    item.id,
+                                                    "price",
+                                                    catItem.price,
+                                                  );
+                                                }
                                                 setActiveCatalogRowId(null);
                                               }}
-                                              className="px-3 py-2.5 text-[#000000] hover:text-[#DC2626] transition-colors cursor-pointer"
-                                              title="Edit item"
                                             >
-                                              <Pencil className="w-4 h-4" />
+                                              <div className="flex justify-between items-center w-full">
+                                                <span className="text-xs font-bold text-[#000000]">
+                                                  {catItem.name}
+                                                </span>
+                                                <span className={`text-[10px] font-bold ${isOutOfStock ? 'text-[#E11D48]' : 'text-green-600'}`}>
+                                                  {isOutOfStock ? 'Out of Stock' : `Stock: ${catItem.stockQuantity}`}
+                                                </span>
+                                              </div>
+                                              {catItem.desc && (
+                                                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#000000] mt-0.5">
+                                                  {catItem.desc}
+                                                </span>
+                                              )}
+                                              {catItem.price !== undefined && (
+                                                <span className="text-[10px] font-bold text-[#DC2626] mt-0.5">
+                                                  ₹{catItem.price}
+                                                </span>
+                                              )}
                                             </button>
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (window.confirm("Are you sure you want to delete this item from the catalog?")) {
-                                                  deleteFromCatalog(catItem.id);
-                                                }
-                                              }}
-                                              className="px-3 py-2.5 text-[#000000] hover:text-[#A67C1E] transition-colors cursor-pointer"
-                                              title="Delete item"
-                                            >
-                                              <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex shrink-0">
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  openEditCatalog(catItem, item.id);
+                                                  setActiveCatalogRowId(null);
+                                                }}
+                                                className="px-3 py-2.5 text-[#000000] hover:text-[#DC2626] transition-colors cursor-pointer"
+                                                title="Edit item"
+                                              >
+                                                <Pencil className="w-4 h-4" />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (window.confirm("Are you sure you want to delete this item from the catalog?")) {
+                                                    deleteFromCatalog(catItem.id);
+                                                  }
+                                                }}
+                                                className="px-3 py-2.5 text-[#000000] hover:text-[#A67C1E] transition-colors cursor-pointer"
+                                                title="Delete item"
+                                              >
+                                                <Trash2 className="w-4 h-4" />
+                                              </button>
+                                            </div>
                                           </div>
-                                        </div>
-                                      ))
-                                  ) : (
+                                        );
+                                      })
+                                   ) : (
                                     <div className="px-4 py-4 text-center">
                                       <div className="text-xs text-[#000000] font-semibold mb-2">
                                         No items match "{catalogSearch}"
@@ -2371,13 +2592,7 @@ export default function POSBilling() {
                               <div className="flex items-center border border-black/10 bg-white rounded-lg overflow-hidden h-[36px] max-w-[90px] shrink-0">
                                 <button
                                   className="w-7 h-full flex items-center justify-center text-[#000000] hover:bg-[#FFFFFF] hover:text-[#A67C1E] font-bold text-xs transition-colors cursor-pointer"
-                                  onClick={() =>
-                                    updateItem(
-                                      item.id,
-                                      "qty",
-                                      Math.max(1, item.qty - 1),
-                                    )
-                                  }
+                                  onClick={() => handleQtyChange(item.id, item.qty - 1)}
                                 >
                                   −
                                 </button>
@@ -2386,9 +2601,7 @@ export default function POSBilling() {
                                 </span>
                                 <button
                                   className="w-7 h-full flex items-center justify-center text-[#000000] hover:bg-[#FFFFFF] hover:text-[#A67C1E] font-bold text-xs transition-colors cursor-pointer"
-                                  onClick={() =>
-                                    updateItem(item.id, "qty", item.qty + 1)
-                                  }
+                                  onClick={() => handleQtyChange(item.id, item.qty + 1)}
                                 >
                                   +
                                 </button>
@@ -4222,10 +4435,22 @@ export default function POSBilling() {
                         const isLow = stock <= threshold;
                         const isExpired = days !== null && days < 0;
                         const isExpiringSoon = days !== null && days >= 0 && days <= 30;
+                        const isExpanded = expandedProductId === p.id;
                         return (
-                          <tr key={p.id} className="hover:bg-[#FAFAFA]">
+                          <React.Fragment key={p.id}>
+                          <tr 
+                            className="hover:bg-[#FAFAFA] cursor-pointer transition-colors"
+                            onClick={() => setExpandedProductId(isExpanded ? null : p.id)}
+                          >
                             <td className="p-3">
-                              <div className="text-sm font-bold text-[#000000]">{p.name}</div>
+                              <div className="text-sm font-bold text-[#000000] flex items-center gap-2">
+                                {p.name}
+                                {p.batches && p.batches.length > 1 && (
+                                  <span className="text-[9px] bg-black/5 px-1.5 py-0.5 rounded text-black/60">
+                                    {p.batches.length} batches
+                                  </span>
+                                )}
+                              </div>
                               {p.desc && (
                                 <div className="text-[10px] font-semibold text-[#000000]/60 mt-0.5">{p.desc}</div>
                               )}
@@ -4259,7 +4484,7 @@ export default function POSBilling() {
                               </div>
                             </td>
                             <td className="p-3 text-right">
-                              <div className="flex justify-end gap-1.5">
+                              <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   onClick={() => openEditCatalog(p)}
                                   className="text-[10px] font-bold text-[#DC2626] hover:text-white hover:bg-[#DC2626] border border-[#DC2626]/30 px-2.5 py-1.5 rounded uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1"
@@ -4279,6 +4504,68 @@ export default function POSBilling() {
                               </div>
                             </td>
                           </tr>
+                          {isExpanded && (
+                            <tr className="bg-[#FAFAFA] border-b border-black/5">
+                              <td colSpan={6} className="p-4">
+                                <div className="bg-white border border-black/10 rounded-lg p-3 shadow-sm">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-[10px] font-bold text-black uppercase tracking-wider">Batch Details</h4>
+                                    <button
+                                      onClick={() => {
+                                        setBatchTargetProductId(p.id);
+                                        resetCatalogForm();
+                                        setShowBatchModal(true);
+                                      }}
+                                      className="text-[10px] font-bold text-white bg-[#1E40AF] hover:bg-[#DC2626] px-2 py-1 rounded transition-colors cursor-pointer"
+                                    >
+                                      + Add Batch
+                                    </button>
+                                  </div>
+                                  <table className="w-full text-left text-xs">
+                                    <thead>
+                                      <tr className="border-b border-black/5 text-[#000000]/60">
+                                        <th className="py-1.5 font-semibold">Batch No</th>
+                                        <th className="py-1.5 font-semibold">Arrived At</th>
+                                        <th className="py-1.5 font-semibold">Expiry Date</th>
+                                        <th className="py-1.5 font-semibold">Cost Price</th>
+                                        <th className="py-1.5 font-semibold">Selling Price</th>
+                                        <th className="py-1.5 font-semibold text-right">Stock</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {p.batches && p.batches.length > 0 ? p.batches.map((b: any) => {
+                                        let batchExpiry = b.expiry_date;
+                                        if (batchExpiry && batchExpiry.includes("T")) {
+                                          batchExpiry = batchExpiry.split("T")[0];
+                                        }
+                                        let batchArrival = b.arrived_at;
+                                        if (batchArrival && batchArrival.includes("T")) {
+                                          batchArrival = batchArrival.split("T")[0];
+                                        }
+                                        return (
+                                          <tr key={b.id} className="border-b border-black/5 last:border-0">
+                                            <td className="py-1.5 font-bold">{b.batch_no || "—"}</td>
+                                            <td className="py-1.5">{batchArrival || "—"}</td>
+                                            <td className="py-1.5">{batchExpiry || "—"}</td>
+                                            <td className="py-1.5">₹{Number(b.cost_price).toLocaleString()}</td>
+                                            <td className="py-1.5">₹{Number(b.selling_price).toLocaleString()}</td>
+                                            <td className={`py-1.5 text-right font-black ${b.stock_quantity > 0 ? "text-green-600" : "text-[#E11D48]"}`}>
+                                              {b.stock_quantity}
+                                            </td>
+                                          </tr>
+                                        );
+                                      }) : (
+                                        <tr>
+                                          <td colSpan={6} className="py-3 text-center text-[10px] font-semibold text-black/40">No batches available.</td>
+                                        </tr>
+                                      )}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         );
                       })}
                       {filteredInventory.length === 0 && (

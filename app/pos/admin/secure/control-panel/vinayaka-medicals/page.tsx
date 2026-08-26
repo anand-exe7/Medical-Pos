@@ -38,7 +38,19 @@ import {
   AlertTriangle,
   Pill,
 } from "lucide-react";
-import { verifyPasscode, fetchProducts, fetchOrders, submitOrder, removeOrder, createProduct, editProduct, removeProduct, createBatch, removeBatch, editBatch } from "@/app/pos/actions";
+import {
+  verifyPasscode,
+  fetchProducts,
+  fetchOrders,
+  submitOrder,
+  removeOrder,
+  createProduct,
+  editProduct,
+  removeProduct,
+  createBatch,
+  removeBatch,
+  editBatch,
+} from "@/app/pos/actions";
 import { ProductWithBatches, ProductBatch, CartItem } from "@/lib/types";
 
 type CatalogItem = {
@@ -48,7 +60,7 @@ type CatalogItem = {
   price?: number;
   mfgDate?: string;
   expiryDate?: string;
-  scheduleCategory?: 'NONE' | 'H' | 'H1';
+  scheduleCategory?: "NONE" | "H" | "H1";
   stockQuantity?: number;
   lowStockThreshold?: number;
   batchNo?: string;
@@ -222,14 +234,20 @@ const SearchableItemInput = ({
                     <li
                       key={catItem.id}
                       className={`px-5 py-3 border-b border-transparent last:border-0 transition-colors ${
-                        isOutOfStock ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                        isOutOfStock
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer"
                       } ${idx === selectedIndex && !isOutOfStock ? "bg-[#FFFFFF] border-l-4 border-l-[#DC2626]" : !isOutOfStock ? "hover:bg-[#FFFFFF] border-l-4 border-l-transparent" : "border-l-4 border-l-transparent"}`}
                       onMouseDown={(e) => {
                         e.preventDefault();
                         if (isOutOfStock) return;
                         updateItem(item.id, "name", catItem.name);
                         updateItem(item.id, "desc", catItem.desc || "");
-                        updateItem(item.id, "product_id", catItem.productId || null);
+                        updateItem(
+                          item.id,
+                          "product_id",
+                          catItem.productId || null,
+                        );
                         if (catItem.price !== undefined) {
                           updateItem(item.id, "price", catItem.price);
                         }
@@ -246,7 +264,11 @@ const SearchableItemInput = ({
                         if (isOutOfStock) return;
                         updateItem(item.id, "name", catItem.name);
                         updateItem(item.id, "desc", catItem.desc || "");
-                        updateItem(item.id, "product_id", catItem.productId || null);
+                        updateItem(
+                          item.id,
+                          "product_id",
+                          catItem.productId || null,
+                        );
                         if (catItem.price !== undefined) {
                           updateItem(item.id, "price", catItem.price);
                         }
@@ -262,7 +284,11 @@ const SearchableItemInput = ({
                         if (isOutOfStock) return;
                         updateItem(item.id, "name", catItem.name);
                         updateItem(item.id, "desc", catItem.desc || "");
-                        updateItem(item.id, "product_id", catItem.productId || null);
+                        updateItem(
+                          item.id,
+                          "product_id",
+                          catItem.productId || null,
+                        );
                         if (catItem.price !== undefined) {
                           updateItem(item.id, "price", catItem.price);
                         }
@@ -274,14 +300,20 @@ const SearchableItemInput = ({
                           if (priceInput) priceInput.focus();
                         }, 50);
                       }}
-                      onMouseEnter={() => !isOutOfStock && setSelectedIndex(idx)}
+                      onMouseEnter={() =>
+                        !isOutOfStock && setSelectedIndex(idx)
+                      }
                     >
                       <div className="flex justify-between items-center">
                         <div className="text-sm font-bold text-[#000000]">
                           {catItem.name}
                         </div>
-                        <div className={`text-[10px] font-bold ${isOutOfStock ? 'text-[#E11D48]' : 'text-green-600'}`}>
-                          {isOutOfStock ? 'Out of Stock' : `Stock: ${catItem.stockQuantity}`}
+                        <div
+                          className={`text-[10px] font-bold ${isOutOfStock ? "text-[#E11D48]" : "text-green-600"}`}
+                        >
+                          {isOutOfStock
+                            ? "Out of Stock"
+                            : `Stock: ${catItem.stockQuantity}`}
                         </div>
                       </div>
                       {catItem.desc && (
@@ -307,7 +339,7 @@ const SearchableItemInput = ({
 
 export default function POSBilling() {
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
-  const [role, setRole] = useState<'staff' | 'admin' | null>(null);
+  const [role, setRole] = useState<"staff" | "admin" | null>(null);
   const [passcode, setPasscode] = useState<string>("");
   const [passcodeError, setPasscodeError] = useState<string>("");
   const [showPasscode, setShowPasscode] = useState<boolean>(false);
@@ -321,7 +353,7 @@ export default function POSBilling() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customOrderDate, setCustomOrderDate] = useState<string>(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
   const [items, setItems] = useState<OrderItem[]>([
     { id: "1", name: "", desc: "", price: 0, qty: 1 },
@@ -336,10 +368,19 @@ export default function POSBilling() {
   const [applyGST, setApplyGST] = useState<boolean>(false);
   const [gstPercentage, setGstPercentage] = useState<number>(18);
   const [activeInvoiceId, setActiveInvoiceId] = useState<string | null>(null);
-  const [completedBillData, setCompletedBillData] = useState<CompletedOrder | null>(null);
+  const [completedBillData, setCompletedBillData] =
+    useState<CompletedOrder | null>(null);
 
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Modal States
+  const [showLowStockAlertModal, setShowLowStockAlertModal] = useState<boolean>(false);
+  const [lowStockAlertProducts, setLowStockAlertProducts] = useState<CatalogItem[]>([]);
+
+  const [showQuickAddStockModal, setShowQuickAddStockModal] = useState<boolean>(false);
+  const [quickAddStockProduct, setQuickAddStockProduct] = useState<CatalogItem | null>(null);
+  const [quickAddStockAmount, setQuickAddStockAmount] = useState<string>("");
 
   // Analytics filter/navigation states
   const [analyticsPeriod, setAnalyticsPeriod] = useState<
@@ -362,20 +403,19 @@ export default function POSBilling() {
     const auth =
       sessionStorage.getItem("pos_authorized") ||
       localStorage.getItem("pos_authorized");
-    const storedRole = 
-      sessionStorage.getItem("pos_role") ||
-      localStorage.getItem("pos_role");
-      
+    const storedRole =
+      sessionStorage.getItem("pos_role") || localStorage.getItem("pos_role");
+
     if (auth === "true") {
       sessionStorage.setItem("pos_authorized", "true");
       if (storedRole) {
         sessionStorage.setItem("pos_role", storedRole);
-        setRole(storedRole as 'staff' | 'admin');
-        if (storedRole === 'staff') {
-          setActiveTab('billing');
+        setRole(storedRole as "staff" | "admin");
+        if (storedRole === "staff") {
+          setActiveTab("billing");
         }
       } else {
-        setRole('admin');
+        setRole("admin");
       }
       setIsAuthorized(true);
     }
@@ -388,9 +428,9 @@ export default function POSBilling() {
     if (result && result.success) {
       sessionStorage.setItem("pos_authorized", "true");
       sessionStorage.setItem("pos_role", result.role || "admin");
-      setRole(result.role as 'staff' | 'admin');
-      if (result.role === 'staff') {
-        setActiveTab('billing');
+      setRole(result.role as "staff" | "admin");
+      if (result.role === "staff") {
+        setActiveTab("billing");
       }
       setIsAuthorized(true);
       setPasscode("");
@@ -417,24 +457,26 @@ export default function POSBilling() {
       const d = new Date(formattedExpiry);
       if (!isNaN(d.getTime())) {
         const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
         formattedExpiry = `${year}-${month}-${day}`;
       }
     }
-    const activeBatch = p.batches?.find((b: any) => b.stock_quantity > 0) || (p.batches && p.batches.length > 0 ? p.batches[0] : null);
-    
+    const activeBatch =
+      p.batches?.find((b: any) => b.stock_quantity > 0) ||
+      (p.batches && p.batches.length > 0 ? p.batches[0] : null);
+
     return {
       id: p.id,
       productId: p.id,
       name: p.name,
       desc: p.description || undefined,
-      price: p.active_selling_price || 0,
+      price: Number(p.active_selling_price) || 0,
       mfgDate: activeBatch?.mfg_date || undefined,
       expiryDate: formattedExpiry,
       scheduleCategory: p.schedule_category,
-      stockQuantity: p.total_stock,
-      lowStockThreshold: p.low_stock_threshold,
+      stockQuantity: Number(p.total_stock) || 0,
+      lowStockThreshold: Number(p.low_stock_threshold) || 0,
       batches: p.batches,
       batchNo: activeBatch?.batch_no || undefined,
       manufacturer: activeBatch?.manufacturer || undefined,
@@ -447,7 +489,7 @@ export default function POSBilling() {
     try {
       const [productsData, ordersData] = await Promise.all([
         fetchProducts(),
-        fetchOrders()
+        fetchOrders(),
       ]);
       setCatalog(productsData.map(productToCatalogItem));
 
@@ -462,16 +504,18 @@ export default function POSBilling() {
               id: i.id,
               name: i.snapshot_name,
               desc: i.snapshot_name === "Custom Item" ? "Custom" : "",
-              price: i.snapshot_price,
-              qty: i.quantity,
+              price: Number(i.snapshot_price) || 0,
+              qty: Number(i.quantity) || 0,
             })),
-            subtotal: o.subtotal,
-            discount: o.discount_amount,
+            subtotal: Number(o.subtotal) || 0,
+            discount: Number(o.discount_amount) || 0,
             discountType: o.discount_type,
-            discountValue: o.discount_value,
-            deliveryFee: o.delivery_fee,
-            grandTotal: o.grand_total,
-            cashReceived: o.cash_received,
+            discountValue: o.discount_value
+              ? Number(o.discount_value)
+              : undefined,
+            deliveryFee: Number(o.delivery_fee) || 0,
+            grandTotal: Number(o.grand_total) || 0,
+            cashReceived: Number(o.cash_received) || 0,
             date: o.bill_date,
             status: o.status === "COMPLETED" ? "Completed" : "Pending",
           };
@@ -505,18 +549,26 @@ export default function POSBilling() {
   const [newCatCostPrice, setNewCatCostPrice] = useState<number | "">("");
   const [newCatExpiry, setNewCatExpiry] = useState<string>("");
   const [newCatMfgDate, setNewCatMfgDate] = useState<string>("");
-  const [newCatSchedule, setNewCatSchedule] = useState<'NONE' | 'H' | 'H1'>('NONE');
+  const [newCatSchedule, setNewCatSchedule] = useState<"NONE" | "H" | "H1">(
+    "NONE",
+  );
   const [newCatStock, setNewCatStock] = useState<number | "">("");
   const [newCatThreshold, setNewCatThreshold] = useState<number | "">(10);
   const [newCatBatch, setNewCatBatch] = useState<string>("");
   const [newCatManufacturer, setNewCatManufacturer] = useState<string>("");
   const [newCatHsn, setNewCatHsn] = useState<string>("");
   const [inventorySearch, setInventorySearch] = useState<string>("");
-  const [scheduleFilter, setScheduleFilter] = useState<'ALL' | 'H' | 'H1'>('ALL');
+  const [scheduleFilter, setScheduleFilter] = useState<"ALL" | "H" | "H1">(
+    "ALL",
+  );
   const [alertedIds, setAlertedIds] = useState<Set<string>>(new Set());
-  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(
+    null,
+  );
   const [showBatchModal, setShowBatchModal] = useState<boolean>(false);
-  const [batchTargetProductId, setBatchTargetProductId] = useState<string | null>(null);
+  const [batchTargetProductId, setBatchTargetProductId] = useState<
+    string | null
+  >(null);
 
   const [activeCatalogRowId, setActiveCatalogRowId] = useState<string | null>(
     null,
@@ -619,19 +671,23 @@ export default function POSBilling() {
         // Find catalog item by product_id OR by exact/case-insensitive name
         const catItem = catalog.find(
           (c) =>
-            (item.product_id && (c.id === item.product_id || c.productId === item.product_id)) ||
-            (item.name && c.name.trim().toLowerCase() === item.name.trim().toLowerCase())
+            (item.product_id &&
+              (c.id === item.product_id || c.productId === item.product_id)) ||
+            (item.name &&
+              c.name.trim().toLowerCase() === item.name.trim().toLowerCase()),
         );
-        if (catItem && typeof catItem.stockQuantity === 'number') {
+        if (catItem && typeof catItem.stockQuantity === "number") {
           if (newQty > catItem.stockQuantity) {
-            alert(`Cannot add more than available stock (${catItem.stockQuantity}) for "${catItem.name}"`);
+            alert(
+              `Cannot add more than available stock (${catItem.stockQuantity}) for "${catItem.name}"`,
+            );
             finalQty = catItem.stockQuantity;
           } else {
             finalQty = newQty;
           }
         }
         return { ...item, qty: finalQty };
-      })
+      }),
     );
   };
 
@@ -649,7 +705,7 @@ export default function POSBilling() {
     setNewCatCostPrice("");
     setNewCatExpiry("");
     setNewCatMfgDate("");
-    setNewCatSchedule('NONE');
+    setNewCatSchedule("NONE");
     setNewCatStock("");
     setNewCatThreshold(10);
     setNewCatBatch("");
@@ -663,7 +719,7 @@ export default function POSBilling() {
     setNewCatDesc(catItem.desc || "");
     setNewCatPrice(catItem.price ?? "");
     setNewCatExpiry(catItem.expiryDate || "");
-    setNewCatSchedule((catItem as any).scheduleCategory || 'NONE');
+    setNewCatSchedule((catItem as any).scheduleCategory || "NONE");
     setNewCatStock(
       typeof catItem.stockQuantity === "number" ? catItem.stockQuantity : "",
     );
@@ -675,9 +731,13 @@ export default function POSBilling() {
     setNewCatBatch(catItem.batchNo || "");
     setNewCatManufacturer(catItem.manufacturer || "");
     setNewCatHsn(catItem.hsnCode || "");
-    
+
     // Set active batch details
-    const activeBatch = catItem.batches?.find(b => b.stock_quantity > 0) || (catItem.batches && catItem.batches.length > 0 ? catItem.batches[0] : null);
+    const activeBatch =
+      catItem.batches?.find((b) => b.stock_quantity > 0) ||
+      (catItem.batches && catItem.batches.length > 0
+        ? catItem.batches[0]
+        : null);
     setEditingBatchId(activeBatch ? activeBatch.id : null);
     if (activeBatch) {
       setNewCatCostPrice(activeBatch.cost_price || "");
@@ -692,7 +752,7 @@ export default function POSBilling() {
       setNewCatCostPrice("");
       setNewCatMfgDate("");
     }
-    
+
     setCatalogTargetRowId(targetRowId || null);
     setShowCatalogModal(true);
   };
@@ -710,7 +770,9 @@ export default function POSBilling() {
 
     const priceNum = Number(newCatPrice);
     if (priceNum > 99999999.99) {
-      alert("The price exceeds the maximum allowable system limit of ₹99,999,999.99.");
+      alert(
+        "The price exceeds the maximum allowable system limit of ₹99,999,999.99.",
+      );
       return;
     }
 
@@ -719,13 +781,16 @@ export default function POSBilling() {
       description: newCatDesc || null,
       category: "Medicine",
       schedule_category: newCatSchedule,
-      low_stock_threshold: newCatThreshold === "" ? 10 : Number(newCatThreshold),
+      low_stock_threshold:
+        newCatThreshold === "" ? 10 : Number(newCatThreshold),
     };
 
     if (editingCatalogId) {
       const data = await editProduct(editingCatalogId, productPayload);
       if (!data) {
-        alert("Product not found — it may have been removed. Refresh and try again.");
+        alert(
+          "Product not found — it may have been removed. Refresh and try again.",
+        );
         return;
       }
 
@@ -740,19 +805,23 @@ export default function POSBilling() {
           mfg_date: newCatMfgDate || null,
           expiry_date: newCatExpiry,
         });
-        
+
         // Refresh catalog to reflect batch changes
         const updatedProducts = await fetchProducts();
         setCatalog(updatedProducts.map(productToCatalogItem));
       } else {
         setCatalog((prev) =>
-          prev.map((c) => (c.id === editingCatalogId ? { 
-            ...c, 
-            name: data.name, 
-            desc: data.description || undefined,
-            lowStockThreshold: data.low_stock_threshold,
-            scheduleCategory: data.schedule_category
-          } : c)),
+          prev.map((c) =>
+            c.id === editingCatalogId
+              ? {
+                  ...c,
+                  name: data.name,
+                  desc: data.description || undefined,
+                  lowStockThreshold: data.low_stock_threshold,
+                  scheduleCategory: data.schedule_category,
+                }
+              : c,
+          ),
         );
       }
 
@@ -766,7 +835,7 @@ export default function POSBilling() {
       setShowCatalogModal(false);
     } else {
       const product = await createProduct(productPayload);
-      
+
       const batchPayload = {
         batch_no: newCatBatch || null,
         manufacturer: newCatManufacturer || null,
@@ -777,17 +846,27 @@ export default function POSBilling() {
         mfg_date: newCatMfgDate || null,
         expiry_date: newCatExpiry,
       };
-      
+
       await createBatch(product.id, batchPayload);
 
-      const data = (await fetchProducts()).find(p => p.id === product.id) || { ...product, batches: [], total_stock: batchPayload.stock_quantity, earliest_expiry: batchPayload.expiry_date, active_selling_price: batchPayload.selling_price };
+      const data = (await fetchProducts()).find((p) => p.id === product.id) || {
+        ...product,
+        batches: [],
+        total_stock: batchPayload.stock_quantity,
+        earliest_expiry: batchPayload.expiry_date,
+        active_selling_price: batchPayload.selling_price,
+      };
       const newItem = productToCatalogItem(data as any);
       setCatalog([...catalog, newItem]);
 
       if (catalogTargetRowId) {
         updateItem(catalogTargetRowId, "name", data.name);
         if (data.active_selling_price !== undefined) {
-          updateItem(catalogTargetRowId, "price", data.active_selling_price || 0);
+          updateItem(
+            catalogTargetRowId,
+            "price",
+            data.active_selling_price || 0,
+          );
         }
         setCatalogTargetRowId(null);
       }
@@ -811,16 +890,51 @@ export default function POSBilling() {
         expiry_date: newCatExpiry || "",
       };
       await createBatch(batchTargetProductId, batchPayload);
-      
+
       const data = await fetchProducts();
       setCatalog(data.map(productToCatalogItem));
-      
+
       setShowBatchModal(false);
       resetCatalogForm();
       setBatchTargetProductId(null);
     } catch (err) {
       console.error(err);
       alert("Failed to add batch.");
+    }
+  };
+
+  const quickAddStock = (product: CatalogItem) => {
+    const activeBatch = product.batches?.find((b) => b.stock_quantity > 0) || (product.batches && product.batches.length > 0 ? product.batches[0] : null);
+    if (!activeBatch) {
+      alert("No batch exists for this product. Please click Edit to add a batch first.");
+      return;
+    }
+    setQuickAddStockProduct(product);
+    setQuickAddStockAmount("");
+    setShowQuickAddStockModal(true);
+  };
+
+  const handleQuickAddStockSubmit = async () => {
+    if (!quickAddStockProduct) return;
+    const addQty = parseInt(quickAddStockAmount);
+    if (isNaN(addQty) || addQty <= 0) {
+      alert("Please enter a valid positive number.");
+      return;
+    }
+    const activeBatch = quickAddStockProduct.batches?.find((b) => b.stock_quantity > 0) || (quickAddStockProduct.batches && quickAddStockProduct.batches.length > 0 ? quickAddStockProduct.batches[0] : null);
+    if (!activeBatch) return;
+
+    try {
+      await editBatch(activeBatch.id, {
+        stock_quantity: (activeBatch.stock_quantity || 0) + addQty,
+      });
+      const updatedProducts = await fetchProducts();
+      setCatalog(updatedProducts.map(productToCatalogItem));
+      setShowQuickAddStockModal(false);
+      setQuickAddStockProduct(null);
+      setQuickAddStockAmount("");
+    } catch (e) {
+      alert("Failed to update stock");
     }
   };
 
@@ -834,10 +948,15 @@ export default function POSBilling() {
     discountType === "percent"
       ? subtotal * (discountValue / 100)
       : discountValue;
-  const gstAmount = applyGST ? (subtotal - calculatedDiscount) * (gstPercentage / 100) : 0;
-  const grandTotal = Math.max(0, subtotal - calculatedDiscount) + deliveryFee + gstAmount;
+  const gstAmount = applyGST
+    ? (subtotal - calculatedDiscount) * (gstPercentage / 100)
+    : 0;
+  const grandTotal =
+    Math.max(0, subtotal - calculatedDiscount) + deliveryFee + gstAmount;
 
-  const handleSendWhatsApp = async (appType: 'personal' | 'business' = 'personal') => {
+  const handleSendWhatsApp = async (
+    appType: "personal" | "business" = "personal",
+  ) => {
     if (!customerPhone || customerPhone.length !== 10) {
       alert(
         "Please enter a valid 10-digit mobile contact number to send the bill.",
@@ -846,34 +965,61 @@ export default function POSBilling() {
     }
 
     // Strict validation: every single row must have a name and a price > 0
-    const hasInvalidItem = items.some(i => !i.name || i.name.trim() === "" || i.price === undefined || i.price <= 0);
-    
+    const hasInvalidItem = items.some(
+      (i) =>
+        !i.name ||
+        i.name.trim() === "" ||
+        i.price === undefined ||
+        i.price <= 0,
+    );
+
     if (hasInvalidItem || items.length === 0) {
-      alert("Please ensure all items have a valid name and a price greater than 0. Remove any empty rows before proceeding.");
+      alert(
+        "Please ensure all items have a valid name and a price greater than 0. Remove any empty rows before proceeding.",
+      );
       return;
     }
     const itemsToSave = items;
 
     // Recalculate values locally to avoid React state lag issues
-    const localSubtotal = itemsToSave.reduce((acc, item) => acc + item.price * item.qty, 0);
+    const localSubtotal = itemsToSave.reduce(
+      (acc, item) => acc + item.price * item.qty,
+      0,
+    );
     const localCalculatedDiscount =
       discountType === "percent"
         ? localSubtotal * (discountValue / 100)
         : discountValue;
-    const localGstAmount = applyGST ? (localSubtotal - localCalculatedDiscount) * (gstPercentage / 100) : 0;
-    const localGrandTotal = Math.max(0, localSubtotal - localCalculatedDiscount) + deliveryFee + localGstAmount;
+    const localGstAmount = applyGST
+      ? (localSubtotal - localCalculatedDiscount) * (gstPercentage / 100)
+      : 0;
+    const localGrandTotal =
+      Math.max(0, localSubtotal - localCalculatedDiscount) +
+      deliveryFee +
+      localGstAmount;
 
     // Validate totals against PostgreSQL numeric(10,2) overflow limit (99,999,999.99)
     const MAX_LIMIT = 99999999.99;
-    if (localSubtotal > MAX_LIMIT || localGrandTotal > MAX_LIMIT || cashReceived > MAX_LIMIT || deliveryFee > MAX_LIMIT) {
-      alert("The order totals exceed the maximum allowable system limit of ₹99,999,999.99. Please adjust the item prices, delivery fee, or cash received.");
+    if (
+      localSubtotal > MAX_LIMIT ||
+      localGrandTotal > MAX_LIMIT ||
+      cashReceived > MAX_LIMIT ||
+      deliveryFee > MAX_LIMIT
+    ) {
+      alert(
+        "The order totals exceed the maximum allowable system limit of ₹99,999,999.99. Please adjust the item prices, delivery fee, or cash received.",
+      );
       return;
     }
 
     // Validate individual item prices
-    const hasTooExpensiveItem = itemsToSave.some((i) => i.price > MAX_LIMIT || (i.price * i.qty) > MAX_LIMIT);
+    const hasTooExpensiveItem = itemsToSave.some(
+      (i) => i.price > MAX_LIMIT || i.price * i.qty > MAX_LIMIT,
+    );
     if (hasTooExpensiveItem) {
-      alert("One or more item prices exceed the maximum system limit of ₹99,999,999.99. Please correct the item prices.");
+      alert(
+        "One or more item prices exceed the maximum system limit of ₹99,999,999.99. Please correct the item prices.",
+      );
       return;
     }
 
@@ -892,14 +1038,14 @@ export default function POSBilling() {
       customerPhone: customerPhone,
       source: isOnline ? "ONLINE" : "OFFLINE",
       billDate: orderTimestamp,
-      items: itemsToSave.map(i => ({
+      items: itemsToSave.map((i) => ({
         id: i.id,
         product_id: i.product_id || null,
         batch_id: i.batch_id || null,
         name: i.name,
         desc: i.desc,
         price: i.price,
-        qty: i.qty
+        qty: i.qty,
       })),
       discountType: discountType === "percent" ? "PERCENT" : "FIXED",
       discountValue: discountValue,
@@ -913,38 +1059,38 @@ export default function POSBilling() {
 
     const [productsData, ordersData] = await Promise.all([
       fetchProducts(),
-      fetchOrders()
+      fetchOrders(),
     ]);
     setCatalog(productsData.map(productToCatalogItem));
-    
+
     // Instead of building a newOrder manually, we find it from the fetched data
-    const createdOrder = ordersData.find(o => o.id === newOrderId);
+    const createdOrder = ordersData.find((o) => o.id === newOrderId);
 
     const domain = window.location.origin;
     const invoiceUrl = `${domain}/invoice/${newOrderId}`;
 
     const shopEmoji = String.fromCodePoint(0x2728);
     const checkEmoji = String.fromCodePoint(0x2705);
-    const tagEmoji = String.fromCodePoint(0x1F516);
-    const moneyEmoji = String.fromCodePoint(0x1F4B0);
-    const receiptEmoji = String.fromCodePoint(0x1F4E6);
+    const tagEmoji = String.fromCodePoint(0x1f516);
+    const moneyEmoji = String.fromCodePoint(0x1f4b0);
+    const receiptEmoji = String.fromCodePoint(0x1f4e6);
 
     let message = `${shopEmoji} *VINAYAKA MEDICALS* ${shopEmoji}\n\n`;
     message += `${checkEmoji} Here are your invoice details!\n\n`;
     message += `Subtotal: ₹${localSubtotal.toFixed(2)}\n`;
-    
+
     if (localCalculatedDiscount > 0) {
       message += `Discount Applied: -₹${localCalculatedDiscount.toFixed(2)}\n`;
     }
-    
+
     if (applyGST && localGstAmount > 0) {
       message += `GST (${gstPercentage}%): ₹${localGstAmount.toFixed(2)}\n`;
     }
-    
+
     if (deliveryFee > 0) {
       message += `Delivery Fee: ₹${deliveryFee.toFixed(2)}\n`;
     }
-    
+
     message += `\n${moneyEmoji} *Total Amount: ₹${localGrandTotal.toFixed(2)}*\n\n`;
     message += `${receiptEmoji} View and download your detailed digital receipt here:\n${invoiceUrl}`;
 
@@ -988,9 +1134,11 @@ export default function POSBilling() {
         grandTotal: createdOrder.grand_total,
         cashReceived: createdOrder.cash_received,
         date: createdOrder.bill_date,
-        status: (createdOrder.status === "COMPLETED" ? "Completed" : "Pending") as "Completed" | "Pending",
+        status: (createdOrder.status === "COMPLETED"
+          ? "Completed"
+          : "Pending") as "Completed" | "Pending",
       };
-      
+
       setOrders((prev) => [mappedOrder, ...prev]);
       setCompletedBillData(mappedOrder as any);
     }
@@ -1005,7 +1153,6 @@ export default function POSBilling() {
     setCashReceived(0);
     setApplyGST(false);
     setGstPercentage(18);
-
   };
 
   const resendWhatsApp = (order: CompletedOrder) => {
@@ -1017,20 +1164,21 @@ export default function POSBilling() {
     const invoiceUrl = `${domain}/invoice/${order.id}`;
     const shopEmoji = String.fromCodePoint(0x2728);
     const checkEmoji = String.fromCodePoint(0x2705);
-    const moneyEmoji = String.fromCodePoint(0x1F4B0);
-    const receiptEmoji = String.fromCodePoint(0x1F4E6);
+    const moneyEmoji = String.fromCodePoint(0x1f4b0);
+    const receiptEmoji = String.fromCodePoint(0x1f4e6);
     let message = `${shopEmoji} *VINAYAKA MEDICALS* ${shopEmoji}\n\n`;
     message += `${checkEmoji} Here are your invoice details!\n\n`;
-    
+
     message += `Subtotal: ₹${order.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
     if (order.discount > 0) {
       message += `Discount Applied: -₹${order.discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
     }
-    
+
     // GST calculation
-    const gstItem = order.items.find(i => i.name && i.name.startsWith("GST"));
-    const calculatedGst = order.grandTotal - (order.subtotal - order.discount + order.deliveryFee);
-    
+    const gstItem = order.items.find((i) => i.name && i.name.startsWith("GST"));
+    const calculatedGst =
+      order.grandTotal - (order.subtotal - order.discount + order.deliveryFee);
+
     if (calculatedGst > 0.1) {
       const gstLabel = gstItem ? gstItem.name : "GST";
       message += `${gstLabel}: ₹${calculatedGst.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
@@ -1039,11 +1187,11 @@ export default function POSBilling() {
     if (order.deliveryFee > 0) {
       message += `Delivery Fee: ₹${order.deliveryFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n`;
     }
-    
+
     message += `\n${moneyEmoji} *Total Amount: ₹${order.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}*\n\n`;
     message += `${receiptEmoji} View and download your detailed digital receipt here:\n${invoiceUrl}`;
     const encodedMessage = encodeURIComponent(message);
-    const cleanPhone = order.customerPhone.replace(/\D/g, '').slice(-10);
+    const cleanPhone = order.customerPhone.replace(/\D/g, "").slice(-10);
     const whatsappUrl = `https://api.whatsapp.com/send?phone=91${cleanPhone}&text=${encodedMessage}`;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
@@ -1054,7 +1202,12 @@ export default function POSBilling() {
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    if (!window.confirm("Are you sure you want to delete this invoice? This action cannot be undone.")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this invoice? This action cannot be undone.",
+      )
+    )
+      return;
     await removeOrder(orderId);
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
     if (selectedOrder?.id === orderId) setSelectedOrder(null);
@@ -1063,273 +1216,362 @@ export default function POSBilling() {
   };
 
   // Real-time analytics derived from orders with period filtering
-  const now = new Date();
+  const {
+    analyticsFilteredOrders,
+    totalOrdersCount,
+    totalRevenueAmount,
+    avgOrderValue,
+    onlineOrders,
+    offlineOrders,
+    onlineRevenue,
+    offlineRevenue,
+    topItems,
+    currentWeekNumber,
+    weekRevenue,
+    maxWeekRevenue,
+    monthRevenue,
+    maxMonthRevenue,
+    totalYearRevenue,
+    avgMonthRevenue,
+    todayOrders,
+    todayRevenue,
+    todayOrdersCount,
+    todayOnlineOrdersCount,
+    todayOfflineOrdersCount,
+    todayOnlineRevenue,
+    todayOfflineRevenue,
+    todayItemsSold,
+    todayTopItems,
+    monthlyRevenue,
+    totalItemsSold,
+    topCategory,
+    topProduct,
+    dayNames,
+    monthNames,
+    itemSales,
+    now,
+  } = React.useMemo(() => {
+    const now = new Date();
 
-  const analyticsFilteredOrders = orders.filter((o) => {
-    if (
-      analyticsSearchPhone &&
-      !o.customerPhone.includes(analyticsSearchPhone)
-    ) {
-      return false;
-    }
-    const orderDate = new Date(o.date);
-    if (analyticsPeriod === "today") {
-      return (
-        orderDate.getDate() === now.getDate() &&
-        orderDate.getMonth() === now.getMonth() &&
-        orderDate.getFullYear() === now.getFullYear()
-      );
-    }
-    if (analyticsPeriod === "week") {
-      const startOfWeek = new Date(now);
-      const dayOfWeek = startOfWeek.getDay();
-      const distToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      startOfWeek.setDate(startOfWeek.getDate() + distToMonday); // Monday start of week
-      startOfWeek.setHours(0, 0, 0, 0);
-      return orderDate >= startOfWeek;
-    }
-    if (analyticsPeriod === "month") {
-      return (
-        orderDate.getMonth() === now.getMonth() &&
-        orderDate.getFullYear() === now.getFullYear()
-      );
-    }
-    if (analyticsPeriod === "year") {
-      return orderDate.getFullYear() === now.getFullYear();
-    }
-    if (analyticsPeriod === "custom") {
-      const orderTime = orderDate.getTime();
-      const start = analyticsStartDate ? new Date(analyticsStartDate) : null;
-      if (start) start.setHours(0, 0, 0, 0);
-      const end = analyticsEndDate ? new Date(analyticsEndDate) : null;
-      if (end) end.setHours(23, 59, 59, 999);
-
-      if (start && end) {
-        return orderTime >= start.getTime() && orderTime <= end.getTime();
-      } else if (start) {
-        return orderTime >= start.getTime();
-      } else if (end) {
-        return orderTime <= end.getTime();
-      }
-      return true;
-    }
-    return true; // "all"
-  });
-
-  const totalOrdersCount = analyticsFilteredOrders.length;
-  const totalRevenueAmount = analyticsFilteredOrders.reduce(
-    (acc, o) => acc + o.grandTotal,
-    0,
-  );
-  const avgOrderValue =
-    totalOrdersCount > 0 ? totalRevenueAmount / totalOrdersCount : 0;
-
-  // Split channels
-  const onlineOrders = analyticsFilteredOrders.filter(
-    (o) => o.source === "ONLINE",
-  ).length;
-  const offlineOrders = analyticsFilteredOrders.filter(
-    (o) => o.source === "OFFLINE",
-  ).length;
-
-  // Split revenues
-  const onlineRevenue = analyticsFilteredOrders
-    .filter((o) => o.source === "ONLINE")
-    .reduce((acc, o) => acc + o.grandTotal, 0);
-  const offlineRevenue = analyticsFilteredOrders
-    .filter((o) => o.source === "OFFLINE")
-    .reduce((acc, o) => acc + o.grandTotal, 0);
-
-  // Top items by revenue in analyticsFilteredOrders
-  const itemSales: Record<
-    string,
-    { name: string; revenue: number; qty: number }
-  > = {};
-  analyticsFilteredOrders.forEach((order) => {
-    order.items.forEach((item) => {
-      if (!item.name || item.name.startsWith("GST (")) return;
-      if (!itemSales[item.name])
-        itemSales[item.name] = { name: item.name, revenue: 0, qty: 0 };
-      itemSales[item.name].revenue += item.price * item.qty;
-      itemSales[item.name].qty += item.qty;
-    });
-  });
-  const topItems = Object.values(itemSales)
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5);
-
-  // Helper to get ISO week number of the year
-  const getWeekOfYear = (d: Date) => {
-    const target = new Date(d.valueOf());
-    const dayNr = (d.getDay() + 6) % 7; // Monday = 0, Sunday = 6
-    target.setDate(target.getDate() - dayNr + 3); // Nearest Thursday
-    const firstThursday = target.valueOf();
-    target.setMonth(0, 1);
-    if (target.getDay() !== 4) {
-      target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
-    }
-    return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
-  };
-  const currentWeekNumber = getWeekOfYear(now);
-
-  // Revenue per day of current week (Mon–Sun) - CONSTANT (independent of analyticsPeriod filters)
-  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const weekRevenue = [0, 0, 0, 0, 0, 0, 0];
-  
-  // Find Monday to Sunday of current calendar week
-  const currentDayOfWeek = now.getDay();
-  const distToMon = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
-  const mondayOfThisWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() + distToMon);
-  mondayOfThisWeek.setHours(0, 0, 0, 0);
-  
-  const sundayOfThisWeek = new Date(mondayOfThisWeek);
-  sundayOfThisWeek.setDate(mondayOfThisWeek.getDate() + 6);
-  sundayOfThisWeek.setHours(23, 59, 59, 999);
-
-  orders.forEach((order) => {
-    if (analyticsSearchPhone) {
-      const q = analyticsSearchPhone.toLowerCase();
-      const matchPhone = order.customerPhone.includes(q);
-      const matchInvoice = order.id.toLowerCase().includes(q);
-      if (!matchPhone && !matchInvoice) {
-        return;
-      }
-    }
-    const orderDate = new Date(order.date);
-    const orderTime = orderDate.getTime();
-    if (orderTime >= mondayOfThisWeek.getTime() && orderTime <= sundayOfThisWeek.getTime()) {
-      const day = (orderDate.getDay() + 6) % 7;
-      weekRevenue[day] += order.grandTotal;
-    }
-  });
-  const maxWeekRevenue = Math.max(...weekRevenue, 1);
-
-  // Revenue per month of current year - CONSTANT (independent of analyticsPeriod filters)
-  const monthNames = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  const monthRevenue = Array(12).fill(0);
-  orders.forEach((order) => {
-    if (analyticsSearchPhone) {
-      const q = analyticsSearchPhone.toLowerCase();
-      const matchPhone = order.customerPhone.includes(q);
-      const matchInvoice = order.id.toLowerCase().includes(q);
-      if (!matchPhone && !matchInvoice) {
-        return;
-      }
-    }
-    const d = new Date(order.date);
-    if (d.getFullYear() === now.getFullYear()) {
-      monthRevenue[d.getMonth()] += order.grandTotal;
-    }
-  });
-  const maxMonthRevenue = Math.max(...monthRevenue, 1);
-  const totalYearRevenue = monthRevenue.reduce((a, b) => a + b, 0);
-  const avgMonthRevenue = totalYearRevenue / 12;
-
-  // New Detailed KPI Computations based on analyticsFilteredOrders
-  const todayOrders = orders.filter((o) => {
-    if (analyticsSearchPhone) {
-      const q = analyticsSearchPhone.toLowerCase();
-      const matchPhone = o.customerPhone.includes(q);
-      const matchInvoice = o.id.toLowerCase().includes(q);
-      if (!matchPhone && !matchInvoice) {
+    const analyticsFilteredOrders = orders.filter((o) => {
+      if (
+        analyticsSearchPhone &&
+        !o.customerPhone.includes(analyticsSearchPhone)
+      ) {
         return false;
       }
-    }
-    const d = new Date(o.date);
-    return (
-      d.getDate() === now.getDate() &&
-      d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear()
-    );
-  });
+      const orderDate = new Date(o.date);
+      if (analyticsPeriod === "today") {
+        return (
+          orderDate.getDate() === now.getDate() &&
+          orderDate.getMonth() === now.getMonth() &&
+          orderDate.getFullYear() === now.getFullYear()
+        );
+      }
+      if (analyticsPeriod === "week") {
+        const startOfWeek = new Date(now);
+        const dayOfWeek = startOfWeek.getDay();
+        const distToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        startOfWeek.setDate(startOfWeek.getDate() + distToMonday); // Monday start of week
+        startOfWeek.setHours(0, 0, 0, 0);
+        return orderDate >= startOfWeek;
+      }
+      if (analyticsPeriod === "month") {
+        return (
+          orderDate.getMonth() === now.getMonth() &&
+          orderDate.getFullYear() === now.getFullYear()
+        );
+      }
+      if (analyticsPeriod === "year") {
+        return orderDate.getFullYear() === now.getFullYear();
+      }
+      if (analyticsPeriod === "custom") {
+        const orderTime = orderDate.getTime();
+        const start = analyticsStartDate ? new Date(analyticsStartDate) : null;
+        if (start) start.setHours(0, 0, 0, 0);
+        const end = analyticsEndDate ? new Date(analyticsEndDate) : null;
+        if (end) end.setHours(23, 59, 59, 999);
 
-  const todayRevenue = todayOrders.reduce((acc, o) => acc + o.grandTotal, 0);
-
-  const todayOrdersCount = todayOrders.length;
-  const todayOnlineOrdersCount = todayOrders.filter(
-    (o) => o.source === "ONLINE",
-  ).length;
-  const todayOfflineOrdersCount = todayOrders.filter(
-    (o) => o.source === "OFFLINE",
-  ).length;
-
-  const todayOnlineRevenue = todayOrders
-    .filter((o) => o.source === "ONLINE")
-    .reduce((acc, o) => acc + o.grandTotal, 0);
-  const todayOfflineRevenue = todayOrders
-    .filter((o) => o.source === "OFFLINE")
-    .reduce((acc, o) => acc + o.grandTotal, 0);
-
-  const todayItemsSold = todayOrders.reduce(
-    (acc, o) => acc + o.items.reduce((sum, item) => {
-      const isGST = item.name && item.name.startsWith("GST (");
-      return sum + (isGST ? 0 : item.qty);
-    }, 0),
-    0,
-  );
-
-  // Today's top items
-  const todayItemSales: Record<
-    string,
-    { name: string; revenue: number; qty: number }
-  > = {};
-  todayOrders.forEach((order) => {
-    order.items.forEach((item) => {
-      if (!item.name || item.name.startsWith("GST (")) return;
-      if (!todayItemSales[item.name])
-        todayItemSales[item.name] = { name: item.name, revenue: 0, qty: 0 };
-      todayItemSales[item.name].revenue += item.price * item.qty;
-      todayItemSales[item.name].qty += item.qty;
+        if (start && end) {
+          return orderTime >= start.getTime() && orderTime <= end.getTime();
+        } else if (start) {
+          return orderTime >= start.getTime();
+        } else if (end) {
+          return orderTime <= end.getTime();
+        }
+        return true;
+      }
+      return true; // "all"
     });
-  });
-  const todayTopItems = Object.values(todayItemSales)
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5);
 
-  const monthlyRevenue = orders
-    .filter((o) => {
+    const totalOrdersCount = analyticsFilteredOrders.length;
+    const totalRevenueAmount = analyticsFilteredOrders.reduce(
+      (acc, o) => acc + o.grandTotal,
+      0,
+    );
+    const avgOrderValue =
+      totalOrdersCount > 0 ? totalRevenueAmount / totalOrdersCount : 0;
+
+    // Split channels
+    const onlineOrders = analyticsFilteredOrders.filter(
+      (o) => o.source === "ONLINE",
+    ).length;
+    const offlineOrders = analyticsFilteredOrders.filter(
+      (o) => o.source === "OFFLINE",
+    ).length;
+
+    // Split revenues
+    const onlineRevenue = analyticsFilteredOrders
+      .filter((o) => o.source === "ONLINE")
+      .reduce((acc, o) => acc + o.grandTotal, 0);
+    const offlineRevenue = analyticsFilteredOrders
+      .filter((o) => o.source === "OFFLINE")
+      .reduce((acc, o) => acc + o.grandTotal, 0);
+
+    // Top items by revenue in analyticsFilteredOrders
+    const itemSales: Record<
+      string,
+      { name: string; revenue: number; qty: number }
+    > = {};
+    analyticsFilteredOrders.forEach((order) => {
+      order.items.forEach((item) => {
+        if (!item.name || item.name.startsWith("GST (")) return;
+        if (!itemSales[item.name])
+          itemSales[item.name] = { name: item.name, revenue: 0, qty: 0 };
+        itemSales[item.name].revenue += item.price * item.qty;
+        itemSales[item.name].qty += item.qty;
+      });
+    });
+    const topItems = Object.values(itemSales)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    // Helper to get ISO week number of the year
+    const getWeekOfYear = (d: Date) => {
+      const target = new Date(d.valueOf());
+      const dayNr = (d.getDay() + 6) % 7; // Monday = 0, Sunday = 6
+      target.setDate(target.getDate() - dayNr + 3); // Nearest Thursday
+      const firstThursday = target.valueOf();
+      target.setMonth(0, 1);
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+      }
+      return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+    };
+    const currentWeekNumber = getWeekOfYear(now);
+
+    // Revenue per day of current week (Mon–Sun) - CONSTANT (independent of analyticsPeriod filters)
+    const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const weekRevenue = [0, 0, 0, 0, 0, 0, 0];
+
+    // Find Monday to Sunday of current calendar week
+    const currentDayOfWeek = now.getDay();
+    const distToMon = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
+    const mondayOfThisWeek = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + distToMon,
+    );
+    mondayOfThisWeek.setHours(0, 0, 0, 0);
+
+    const sundayOfThisWeek = new Date(mondayOfThisWeek);
+    sundayOfThisWeek.setDate(mondayOfThisWeek.getDate() + 6);
+    sundayOfThisWeek.setHours(23, 59, 59, 999);
+
+    orders.forEach((order) => {
+      if (analyticsSearchPhone) {
+        const q = analyticsSearchPhone.toLowerCase();
+        const matchPhone = order.customerPhone.includes(q);
+        const matchInvoice = order.id.toLowerCase().includes(q);
+        if (!matchPhone && !matchInvoice) {
+          return;
+        }
+      }
+      const orderDate = new Date(order.date);
+      const orderTime = orderDate.getTime();
+      if (
+        orderTime >= mondayOfThisWeek.getTime() &&
+        orderTime <= sundayOfThisWeek.getTime()
+      ) {
+        const day = (orderDate.getDay() + 6) % 7;
+        weekRevenue[day] += order.grandTotal;
+      }
+    });
+    const maxWeekRevenue = Math.max(...weekRevenue, 1);
+
+    // Revenue per month of current year - CONSTANT (independent of analyticsPeriod filters)
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const monthRevenue = Array(12).fill(0);
+    orders.forEach((order) => {
+      if (analyticsSearchPhone) {
+        const q = analyticsSearchPhone.toLowerCase();
+        const matchPhone = order.customerPhone.includes(q);
+        const matchInvoice = order.id.toLowerCase().includes(q);
+        if (!matchPhone && !matchInvoice) {
+          return;
+        }
+      }
+      const d = new Date(order.date);
+      if (d.getFullYear() === now.getFullYear()) {
+        monthRevenue[d.getMonth()] += order.grandTotal;
+      }
+    });
+    const maxMonthRevenue = Math.max(...monthRevenue, 1);
+    const totalYearRevenue = monthRevenue.reduce((a, b) => a + b, 0);
+    const avgMonthRevenue = totalYearRevenue / 12;
+
+    // New Detailed KPI Computations based on analyticsFilteredOrders
+    const todayOrders = orders.filter((o) => {
+      if (analyticsSearchPhone) {
+        const q = analyticsSearchPhone.toLowerCase();
+        const matchPhone = o.customerPhone.includes(q);
+        const matchInvoice = o.id.toLowerCase().includes(q);
+        if (!matchPhone && !matchInvoice) {
+          return false;
+        }
+      }
       const d = new Date(o.date);
       return (
-        d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+        d.getDate() === now.getDate() &&
+        d.getMonth() === now.getMonth() &&
+        d.getFullYear() === now.getFullYear()
       );
-    })
-    .reduce((acc, o) => acc + o.grandTotal, 0);
-
-  const totalItemsSold = analyticsFilteredOrders.reduce(
-    (acc, o) => acc + o.items.reduce((sum, item) => {
-      const isGST = item.name && item.name.startsWith("GST (");
-      return sum + (isGST ? 0 : item.qty);
-    }, 0),
-    0,
-  );
-
-  const categorySales: Record<string, number> = {};
-  analyticsFilteredOrders.forEach((order) => {
-    order.items.forEach((item) => {
-      if (item.name && item.name.startsWith("GST (")) return;
-      const cat = item.desc || "Uncategorized";
-      if (!categorySales[cat]) categorySales[cat] = 0;
-      categorySales[cat] += item.price * item.qty;
     });
-  });
-  const topCategory =
-    Object.keys(categorySales).length > 0
-      ? Object.entries(categorySales).sort((a, b) => b[1] - a[1])[0][0]
-      : "None";
-  const topProduct = topItems[0]?.name || "None";
+
+    const todayRevenue = todayOrders.reduce((acc, o) => acc + o.grandTotal, 0);
+
+    const todayOrdersCount = todayOrders.length;
+    const todayOnlineOrdersCount = todayOrders.filter(
+      (o) => o.source === "ONLINE",
+    ).length;
+    const todayOfflineOrdersCount = todayOrders.filter(
+      (o) => o.source === "OFFLINE",
+    ).length;
+
+    const todayOnlineRevenue = todayOrders
+      .filter((o) => o.source === "ONLINE")
+      .reduce((acc, o) => acc + o.grandTotal, 0);
+    const todayOfflineRevenue = todayOrders
+      .filter((o) => o.source === "OFFLINE")
+      .reduce((acc, o) => acc + o.grandTotal, 0);
+
+    const todayItemsSold = todayOrders.reduce(
+      (acc, o) =>
+        acc +
+        o.items.reduce((sum, item) => {
+          const isGST = item.name && item.name.startsWith("GST (");
+          return sum + (isGST ? 0 : item.qty);
+        }, 0),
+      0,
+    );
+
+    // Today's top items
+    const todayItemSales: Record<
+      string,
+      { name: string; revenue: number; qty: number }
+    > = {};
+    todayOrders.forEach((order) => {
+      order.items.forEach((item) => {
+        if (!item.name || item.name.startsWith("GST (")) return;
+        if (!todayItemSales[item.name])
+          todayItemSales[item.name] = { name: item.name, revenue: 0, qty: 0 };
+        todayItemSales[item.name].revenue += item.price * item.qty;
+        todayItemSales[item.name].qty += item.qty;
+      });
+    });
+    const todayTopItems = Object.values(todayItemSales)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    const monthlyRevenue = orders
+      .filter((o) => {
+        const d = new Date(o.date);
+        return (
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
+        );
+      })
+      .reduce((acc, o) => acc + o.grandTotal, 0);
+
+    const totalItemsSold = analyticsFilteredOrders.reduce(
+      (acc, o) =>
+        acc +
+        o.items.reduce((sum, item) => {
+          const isGST = item.name && item.name.startsWith("GST (");
+          return sum + (isGST ? 0 : item.qty);
+        }, 0),
+      0,
+    );
+
+    const categorySales: Record<string, number> = {};
+    analyticsFilteredOrders.forEach((order) => {
+      order.items.forEach((item) => {
+        if (item.name && item.name.startsWith("GST (")) return;
+        const cat = item.desc || "Uncategorized";
+        if (!categorySales[cat]) categorySales[cat] = 0;
+        categorySales[cat] += item.price * item.qty;
+      });
+    });
+    const topCategory =
+      Object.keys(categorySales).length > 0
+        ? Object.entries(categorySales).sort((a, b) => b[1] - a[1])[0][0]
+        : "None";
+    const topProduct = topItems[0]?.name || "None";
+    return {
+      analyticsFilteredOrders,
+      totalOrdersCount,
+      totalRevenueAmount,
+      avgOrderValue,
+      onlineOrders,
+      offlineOrders,
+      onlineRevenue,
+      offlineRevenue,
+      topItems,
+      currentWeekNumber,
+      weekRevenue,
+      maxWeekRevenue,
+      monthRevenue,
+      maxMonthRevenue,
+      totalYearRevenue,
+      avgMonthRevenue,
+      todayOrders,
+      todayRevenue,
+      todayOrdersCount,
+      todayOnlineOrdersCount,
+      todayOfflineOrdersCount,
+      todayOnlineRevenue,
+      todayOfflineRevenue,
+      todayItemsSold,
+      todayTopItems,
+      monthlyRevenue,
+      totalItemsSold,
+      topCategory,
+      topProduct,
+      dayNames,
+      monthNames,
+      itemSales,
+      now,
+    };
+  }, [
+    orders,
+    analyticsSearchPhone,
+    analyticsPeriod,
+    analyticsStartDate,
+    analyticsEndDate,
+  ]);
 
   // Inventory-derived data: low stock + near-expiry products
   const today = new Date();
@@ -1356,8 +1598,8 @@ export default function POSBilling() {
 
   const filteredInventory = inventoryProducts.filter((p) => {
     // 1. Check schedule filter first
-    const itemSchedule = (p as any).scheduleCategory || 'NONE';
-    if (scheduleFilter !== 'ALL' && itemSchedule !== scheduleFilter) {
+    const itemSchedule = (p as any).scheduleCategory || "NONE";
+    if (scheduleFilter !== "ALL" && itemSchedule !== scheduleFilter) {
       return false;
     }
 
@@ -1373,7 +1615,10 @@ export default function POSBilling() {
     );
   });
 
-  const lowStockKey = lowStockItems.map((c) => c.id).sort().join("|");
+  const lowStockKey = lowStockItems
+    .map((c) => c.id)
+    .sort()
+    .join("|");
 
   useEffect(() => {
     if (!isAuthorized || lowStockItems.length === 0) return;
@@ -1383,9 +1628,14 @@ export default function POSBilling() {
 
     try {
       const AudioCtx =
-        (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext })
-          .AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        (
+          window as unknown as {
+            AudioContext?: typeof AudioContext;
+            webkitAudioContext?: typeof AudioContext;
+          }
+        ).AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
       if (AudioCtx) {
         const ctx = new AudioCtx();
         const now = ctx.currentTime;
@@ -1411,6 +1661,32 @@ export default function POSBilling() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthorized, lowStockKey]);
 
+  useEffect(() => {
+    if (activeTab === "alerts") {
+      try {
+        const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+          gain.gain.setValueAtTime(0.1, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.5);
+          setTimeout(() => ctx.close().catch(() => {}), 600);
+        }
+      } catch (err) {}
+      
+      if (lowStockItems.length > 0) {
+        setLowStockAlertProducts(lowStockItems);
+        setShowLowStockAlertModal(true);
+      }
+    }
+  }, [activeTab]);
+
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-[#FFFFFF] flex items-center justify-center font-sans">
@@ -1430,22 +1706,28 @@ export default function POSBilling() {
       <div className="min-h-screen bg-[#FFFFFF] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
         {/* Custom luxury grid pattern overlay */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#DC2626/0.03_1px,transparent_1px),linear-gradient(to_bottom,#DC2626/0.03_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-        
+
         {/* Abstract Background Orbs */}
         <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] bg-[#DC2626]/10 rounded-full blur-[150px] animate-pulse" />
-        <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] bg-[#DC2626]/10 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '2s' }} />
-        
+        <div
+          className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] bg-[#DC2626]/10 rounded-full blur-[150px] animate-pulse"
+          style={{ animationDelay: "2s" }}
+        />
+
         {/* Main Card Container */}
         <div className="relative z-10 w-full max-w-md bg-white border border-[#DC2626]/30 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_70px_rgba(78,195,215,0.1)] overflow-hidden group flex flex-col items-center text-center">
-          
           {/* Card top border gradient accent */}
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#DC2626] via-[#DC2626] to-[#DC2626]" />
-          
+
           {/* Logo with Gradient Hover Glow */}
           <div className="relative group mb-6">
             <div className="absolute -inset-1.5 bg-gradient-to-r from-[#DC2626] to-[#DC2626] rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
             <div className="relative w-20 h-20 bg-white rounded-2xl p-3.5 border border-[#DC2626]/30 shadow-lg flex items-center justify-center">
-              <img src="/logo.png" alt="VINAYAKA MEDICALS Logo" className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+              <img
+                src="/logo.png"
+                alt="VINAYAKA MEDICALS Logo"
+                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+              />
             </div>
           </div>
 
@@ -1458,7 +1740,10 @@ export default function POSBilling() {
           </p>
 
           {/* Form */}
-          <form onSubmit={handleVerifyPasscode} className="w-full space-y-6 text-left">
+          <form
+            onSubmit={handleVerifyPasscode}
+            className="w-full space-y-6 text-left"
+          >
             <div className="space-y-3">
               <label className="text-[9px] font-bold text-[#DC2626] uppercase tracking-[0.25em] ml-1">
                 Security Passcode
@@ -1485,7 +1770,11 @@ export default function POSBilling() {
                   onClick={() => setShowPasscode(!showPasscode)}
                   className="absolute right-5 top-1/2 -translate-y-1/2 text-black/30 hover:text-[#DC2626] transition-colors cursor-pointer"
                 >
-                  {showPasscode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPasscode ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
               {passcodeError && (
@@ -1494,7 +1783,7 @@ export default function POSBilling() {
                 </p>
               )}
             </div>
-            
+
             <button
               type="submit"
               className="w-full py-4 bg-gradient-to-r from-[#DC2626] via-[#DC2626] to-[#DC2626] hover:brightness-105 active:scale-[0.98] text-white rounded-2xl font-bold text-xs uppercase tracking-[0.2em] transition-all shadow-[0_10px_30px_rgba(78,195,215,0.2)] flex items-center justify-center gap-3 mt-4 group cursor-pointer border border-[#DC2626]/30"
@@ -1507,11 +1796,12 @@ export default function POSBilling() {
           {/* Status Badge */}
           <div className="mt-8 inline-flex items-center gap-2 px-3 py-1 bg-[#DC2626]/10 border border-[#DC2626]/30 rounded-full shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] animate-pulse" />
-            <span className="text-[8px] font-bold text-[#DC2626] tracking-[0.15em] uppercase">SYSTEM ONLINE • ENCRYPTED</span>
+            <span className="text-[8px] font-bold text-[#DC2626] tracking-[0.15em] uppercase">
+              SYSTEM ONLINE • ENCRYPTED
+            </span>
           </div>
-
         </div>
-        
+
         {/* Footnote */}
         <div className="mt-6 text-[#1C1917]/30 text-[9px] font-bold tracking-widest uppercase">
           VINAYAKA MEDICALS Terminal v1.0
@@ -1736,10 +2026,14 @@ export default function POSBilling() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base text-black tracking-tight">
-                    {editingCatalogId ? "Edit Catalog Item" : "Add New Medicine"}
+                    {editingCatalogId
+                      ? "Edit Catalog Item"
+                      : "Add New Medicine"}
                   </h3>
                   <p className="text-[11px] text-gray-500 font-medium">
-                    {editingCatalogId ? "Modify product parameters" : "Register product into catalog"}
+                    {editingCatalogId
+                      ? "Modify product parameters"
+                      : "Register product into catalog"}
                   </p>
                 </div>
               </div>
@@ -1860,7 +2154,9 @@ export default function POSBilling() {
                     onWheel={(e) => e.currentTarget.blur()}
                     onChange={(e) =>
                       setNewCatStock(
-                        e.target.value === "" ? "" : parseInt(e.target.value, 10),
+                        e.target.value === ""
+                          ? ""
+                          : parseInt(e.target.value, 10),
                       )
                     }
                   />
@@ -1879,7 +2175,9 @@ export default function POSBilling() {
                     onWheel={(e) => e.currentTarget.blur()}
                     onChange={(e) =>
                       setNewCatThreshold(
-                        e.target.value === "" ? "" : parseInt(e.target.value, 10),
+                        e.target.value === ""
+                          ? ""
+                          : parseInt(e.target.value, 10),
                       )
                     }
                   />
@@ -1950,8 +2248,12 @@ export default function POSBilling() {
                   <PackagePlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base text-black tracking-tight">Add New Batch</h3>
-                  <p className="text-[11px] text-gray-500 font-medium">Record batch stock & arrival info</p>
+                  <h3 className="font-extrabold text-base text-black tracking-tight">
+                    Add New Batch
+                  </h3>
+                  <p className="text-[11px] text-gray-500 font-medium">
+                    Record batch stock & arrival info
+                  </p>
                 </div>
               </div>
               <button
@@ -1979,7 +2281,11 @@ export default function POSBilling() {
                     placeholder="0.00"
                     className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
                     value={newCatCostPrice}
-                    onChange={(e) => setNewCatCostPrice(e.target.value ? Number(e.target.value) : "")}
+                    onChange={(e) =>
+                      setNewCatCostPrice(
+                        e.target.value ? Number(e.target.value) : "",
+                      )
+                    }
                     onWheel={(e) => e.currentTarget.blur()}
                   />
                 </div>
@@ -1992,7 +2298,11 @@ export default function POSBilling() {
                     placeholder="0.00"
                     className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
                     value={newCatPrice}
-                    onChange={(e) => setNewCatPrice(e.target.value ? Number(e.target.value) : "")}
+                    onChange={(e) =>
+                      setNewCatPrice(
+                        e.target.value ? Number(e.target.value) : "",
+                      )
+                    }
                     onWheel={(e) => e.currentTarget.blur()}
                   />
                 </div>
@@ -2009,7 +2319,11 @@ export default function POSBilling() {
                     placeholder="0"
                     className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs"
                     value={newCatStock}
-                    onChange={(e) => setNewCatStock(e.target.value ? Number(e.target.value) : "")}
+                    onChange={(e) =>
+                      setNewCatStock(
+                        e.target.value ? Number(e.target.value) : "",
+                      )
+                    }
                     onWheel={(e) => e.currentTarget.blur()}
                   />
                 </div>
@@ -2155,12 +2469,14 @@ export default function POSBilling() {
                 <AlertTriangle className="w-5 h-5 shrink-0" />
                 Stock Alerts
                 {lowStockItems.length > 0 && (
-                  <span className={`ml-auto min-w-[22px] h-[22px] px-1.5 rounded-full text-[10px] font-black flex items-center justify-center ${activeTab === "alerts" ? "bg-[#E11D48] text-white" : "bg-[#E11D48] text-white animate-pulse"}`}>
+                  <span
+                    className={`ml-auto min-w-[22px] h-[22px] px-1.5 rounded-full text-[10px] font-black flex items-center justify-center ${activeTab === "alerts" ? "bg-[#E11D48] text-white" : "bg-[#E11D48] text-white animate-pulse"}`}
+                  >
                     {lowStockItems.length}
                   </span>
                 )}
               </button>
-              {role === 'admin' && (
+              {role === "admin" && (
                 <button
                   onClick={() => {
                     setActiveTab("inventory");
@@ -2176,7 +2492,7 @@ export default function POSBilling() {
                   Inventory
                 </button>
               )}
-              {role === 'admin' && (
+              {role === "admin" && (
                 <button
                   onClick={() => {
                     setActiveTab("analytics");
@@ -2208,11 +2524,11 @@ export default function POSBilling() {
           {/* Footer branding */}
           <div className="p-5 border-t border-white/20 bg-white/10 flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-black text-xs uppercase">
-              {role === 'admin' ? 'A' : 'S'}
+              {role === "admin" ? "A" : "S"}
             </div>
             <div>
               <span className="text-xs font-bold text-white block uppercase tracking-wider">
-                {role === 'admin' ? 'Admin Access' : 'Staff Access'}
+                {role === "admin" ? "Admin Access" : "Staff Access"}
               </span>
               <span className="text-[9px] text-white/80 font-bold tracking-wider block">
                 V2.1.0 • PREMIUM POS
@@ -2263,8 +2579,8 @@ export default function POSBilling() {
           )}
         </header>
 
-        {activeTab === "billing" && (
-          completedBillData ? (
+        {activeTab === "billing" &&
+          (completedBillData ? (
             <div className="flex-1 flex flex-col gap-4 max-w-[640px] min-w-0 mx-auto w-full py-2 animate-in fade-in duration-200">
               {/* Header Bar */}
               <div className="flex justify-between items-center pb-2 border-b border-black/10">
@@ -2292,16 +2608,27 @@ export default function POSBilling() {
                 </div>
 
                 <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-gray-600">Grand Total</span>
+                  <span className="font-semibold text-gray-600">
+                    Grand Total
+                  </span>
                   <span className="text-xl font-black text-black">
-                    ₹{completedBillData.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ₹
+                    {completedBillData.grandTotal.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-gray-600">Amount Received</span>
+                  <span className="font-semibold text-gray-600">
+                    Amount Received
+                  </span>
                   <span className="text-sm font-black text-black">
-                    ₹{(completedBillData.cashReceived || completedBillData.grandTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ₹
+                    {(
+                      completedBillData.cashReceived ||
+                      completedBillData.grandTotal
+                    ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
 
@@ -2311,7 +2638,12 @@ export default function POSBilling() {
                     Balance Returned
                   </span>
                   <span className="text-base sm:text-lg font-black text-[#2563EB]">
-                    ₹{Math.max(0, (completedBillData.cashReceived || 0) - completedBillData.grandTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ₹
+                    {Math.max(
+                      0,
+                      (completedBillData.cashReceived || 0) -
+                        completedBillData.grandTotal,
+                    ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
@@ -2329,7 +2661,11 @@ export default function POSBilling() {
                   onClick={() => resendWhatsApp(completedBillData)}
                   className="bg-[#10B981] hover:bg-[#059669] text-white py-2.5 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                 >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    className="w-3.5 h-3.5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.012c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
                   </svg>
                   WhatsApp Invoice
@@ -2351,12 +2687,21 @@ export default function POSBilling() {
 
                 <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                   {completedBillData.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-xs py-1 border-b border-gray-50 last:border-none">
+                    <div
+                      key={idx}
+                      className="flex justify-between items-center text-xs py-1 border-b border-gray-50 last:border-none"
+                    >
                       <span className="font-semibold text-black">
-                        {item.name} <span className="text-gray-400 font-bold text-[10px] ml-1">× {item.qty} {item.qty === 1 ? 'piece' : 'pieces'}</span>
+                        {item.name}{" "}
+                        <span className="text-gray-400 font-bold text-[10px] ml-1">
+                          × {item.qty} {item.qty === 1 ? "piece" : "pieces"}
+                        </span>
                       </span>
                       <span className="font-bold text-black">
-                        ₹{(item.price * item.qty).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        ₹
+                        {(item.price * item.qty).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
                       </span>
                     </div>
                   ))}
@@ -2380,609 +2725,648 @@ export default function POSBilling() {
                 </div>
               </div>
 
-            {/* Grid Layout */}
-            <div className="flex flex-col lg:flex-row gap-8 w-full">
-              {/* Left Column */}
-              <div className="w-full lg:w-[60%] xl:w-[65%] flex flex-col gap-6 h-auto lg:h-full">
-                {/* Customer Details */}
-                <div className="flex-shrink-0 bg-white border border-black/10 rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 relative overflow-hidden group">
-                  <h2 className="text-base font-black flex items-center gap-3 text-[#000000] mb-6 tracking-tight">
-                    <User className="w-4 h-4 text-[#DC2626]" />
-                    Customer Details
-                  </h2>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
-                    <div>
-                      <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
-                        Customer Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Walk-in Customer"
-                        className="w-full bg-[#FFFFFF]/40 border border-black/10 hover:border-black/10 focus:border-[#DC2626] focus:bg-white rounded-lg px-4 py-2.5 text-[#000000] text-sm font-semibold focus:outline-none transition-colors placeholder:text-[#000000] placeholder:font-normal shadow-sm"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
-                        Mobile Number (WhatsApp)
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="Enter 10-digit number"
-                        maxLength={10}
-                        className="w-full bg-[#FFFFFF]/40 border border-black/10 hover:border-black/10 focus:border-[#DC2626] focus:bg-white rounded-lg px-4 py-2.5 text-[#000000] text-sm font-semibold focus:outline-none transition-colors placeholder:text-[#000000] placeholder:font-normal shadow-sm"
-                        value={customerPhone}
-                        onChange={(e) =>
-                          setCustomerPhone(
-                            e.target.value.replace(/\D/g, "").slice(0, 10),
-                          )
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-[#DC2626]" />
-                          Bill Date
-                        </span>
-                        <span className="text-[9px] text-[#DC2626] font-extrabold uppercase">Custom / Past</span>
-                      </label>
-                      <input
-                        type="date"
-                        max={new Date().toISOString().split("T")[0]}
-                        className="w-full bg-[#FFFFFF]/40 border border-black/10 hover:border-black/10 focus:border-[#DC2626] focus:bg-white rounded-lg px-4 py-2.5 text-[#000000] text-sm font-bold focus:outline-none transition-colors cursor-pointer shadow-sm"
-                        value={customOrderDate}
-                        onChange={(e) => setCustomOrderDate(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-
-                {/* Order Items Ledger */}
-                <div className="flex-1 bg-white border border-black/10 rounded-xl shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 flex flex-col overflow-visible">
-                  <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-6 pt-4 sm:pt-6 pb-2 border-b border-transparent gap-4">
-                    <h2 className="text-base font-black flex items-center gap-3 text-[#000000] tracking-tight">
-                      <Receipt className="w-4 h-4 text-[#DC2626]" />
-                      Order Items
+              {/* Grid Layout */}
+              <div className="flex flex-col lg:flex-row gap-8 w-full">
+                {/* Left Column */}
+                <div className="w-full lg:w-[60%] xl:w-[65%] flex flex-col gap-6 h-auto lg:h-full">
+                  {/* Customer Details */}
+                  <div className="flex-shrink-0 bg-white border border-black/10 rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 relative overflow-hidden group">
+                    <h2 className="text-base font-black flex items-center gap-3 text-[#000000] mb-6 tracking-tight">
+                      <User className="w-4 h-4 text-[#DC2626]" />
+                      Customer Details
                     </h2>
-                    <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
-                      <button
-                        onClick={clearOrder}
-                        className="text-[10px] font-bold text-[#000000] bg-[#FFFFFF] hover:bg-[#FFFFFF] border border-black/10 px-4 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Clear Order
-                      </button>
-                      <button
-                        onClick={() => {
-                          setNewCatName("");
-                          setNewCatDesc("");
-                          setNewCatPrice("");
-                          setCatalogTargetRowId(null);
-                          setShowCatalogModal(true);
-                        }}
-                        className="text-[10px] font-bold text-[#000000] bg-[#FFFFFF] hover:bg-[#FFFFFF] border border-black/10 px-4 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <PackagePlus className="w-3.5 h-3.5 text-[#DC2626]" />{" "}
-                        Add To Catalog
-                      </button>
-                      <button
-                        onClick={addItem}
-                        className="text-[10px] font-bold text-[#DC2626] bg-[#DC2626]/5 hover:bg-[#DC2626]/10 border border-[#DC2626]/20 px-4 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Add Custom Item
-                      </button>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
+                          Customer Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Walk-in Customer"
+                          className="w-full bg-[#FFFFFF]/40 border border-black/10 hover:border-black/10 focus:border-[#DC2626] focus:bg-white rounded-lg px-4 py-2.5 text-[#000000] text-sm font-semibold focus:outline-none transition-colors placeholder:text-[#000000] placeholder:font-normal shadow-sm"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2">
+                          Mobile Number (WhatsApp)
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="Enter 10-digit number"
+                          maxLength={10}
+                          className="w-full bg-[#FFFFFF]/40 border border-black/10 hover:border-black/10 focus:border-[#DC2626] focus:bg-white rounded-lg px-4 py-2.5 text-[#000000] text-sm font-semibold focus:outline-none transition-colors placeholder:text-[#000000] placeholder:font-normal shadow-sm"
+                          value={customerPhone}
+                          onChange={(e) =>
+                            setCustomerPhone(
+                              e.target.value.replace(/\D/g, "").slice(0, 10),
+                            )
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.15em] mb-2 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-[#DC2626]" />
+                            Bill Date
+                          </span>
+                          <span className="text-[9px] text-[#DC2626] font-extrabold uppercase">
+                            Custom / Past
+                          </span>
+                        </label>
+                        <input
+                          type="date"
+                          max={new Date().toISOString().split("T")[0]}
+                          className="w-full bg-[#FFFFFF]/40 border border-black/10 hover:border-black/10 focus:border-[#DC2626] focus:bg-white rounded-lg px-4 py-2.5 text-[#000000] text-sm font-bold focus:outline-none transition-colors cursor-pointer shadow-sm"
+                          value={customOrderDate}
+                          onChange={(e) => setCustomOrderDate(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex-1 px-4 sm:px-6 pb-4 sm:pb-6 overflow-visible">
-                    {/* Table Header */}
-                    <div className="hidden sm:grid grid-cols-12 gap-4 pb-3 border-b border-black/10 text-[9px] font-black text-[#000000] uppercase tracking-[0.15em] mt-4 mb-2">
-                      <div className="col-span-7 pl-2">
-                        Item Name / Description
+                  {/* Order Items Ledger */}
+                  <div className="flex-1 bg-white border border-black/10 rounded-xl shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 flex flex-col overflow-visible">
+                    <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-6 pt-4 sm:pt-6 pb-2 border-b border-transparent gap-4">
+                      <h2 className="text-base font-black flex items-center gap-3 text-[#000000] tracking-tight">
+                        <Receipt className="w-4 h-4 text-[#DC2626]" />
+                        Order Items
+                      </h2>
+                      <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
+                        <button
+                          onClick={clearOrder}
+                          className="text-[10px] font-bold text-[#000000] bg-[#FFFFFF] hover:bg-[#FFFFFF] border border-black/10 px-4 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Clear Order
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNewCatName("");
+                            setNewCatDesc("");
+                            setNewCatPrice("");
+                            setCatalogTargetRowId(null);
+                            setShowCatalogModal(true);
+                          }}
+                          className="text-[10px] font-bold text-[#000000] bg-[#FFFFFF] hover:bg-[#FFFFFF] border border-black/10 px-4 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <PackagePlus className="w-3.5 h-3.5 text-[#DC2626]" />{" "}
+                          Add To Catalog
+                        </button>
+                        <button
+                          onClick={addItem}
+                          className="text-[10px] font-bold text-[#DC2626] bg-[#DC2626]/5 hover:bg-[#DC2626]/10 border border-[#DC2626]/20 px-4 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add Custom Item
+                        </button>
                       </div>
-                      <div className="col-span-2 text-center">Price (₹)</div>
-                      <div className="col-span-2 text-center">Qty</div>
-                      <div className="col-span-1"></div>
                     </div>
 
-                    {/* Items List */}
-                    <div className="space-y-4 pt-2 overflow-visible">
-                      {items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex flex-col sm:grid sm:grid-cols-12 gap-3 sm:gap-4 items-stretch sm:items-center group border-b border-transparent pb-4 pt-1 overflow-visible relative"
-                        >
-                          {/* Item Name / Description Input + Catalog Button */}
-                          <div className="col-span-7 relative flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
-                            <input
-                              type="text"
-                              placeholder="Type custom service description..."
-                              className="flex-1 bg-white border border-black/10 focus:border-[#DC2626] rounded-lg px-4 py-2 text-xs font-semibold text-[#000000] focus:outline-none transition-colors placeholder:text-[#000000] min-w-0"
-                              value={item.name}
-                              onChange={(e) =>
-                                updateItem(item.id, "name", e.target.value)
-                              }
-                            />
-                            <button
-                              onClick={() => {
-                                setActiveCatalogRowId(
-                                  activeCatalogRowId === item.id
-                                    ? null
-                                    : item.id,
-                                );
-                                setCatalogSearch("");
-                              }}
-                              className="flex items-center justify-center gap-1.5 border border-[#DC2626]/30 bg-[#DC2626]/5 text-[#DC2626] hover:bg-[#DC2626]/10 px-3 py-2 rounded-lg text-[10px] font-bold transition-colors uppercase tracking-wider shrink-0 cursor-pointer w-full sm:w-auto"
-                            >
-                              <List className="w-3.5 h-3.5" />
-                              Catalog
-                            </button>
+                    <div className="flex-1 px-4 sm:px-6 pb-4 sm:pb-6 overflow-visible">
+                      {/* Table Header */}
+                      <div className="hidden sm:grid grid-cols-12 gap-4 pb-3 border-b border-black/10 text-[9px] font-black text-[#000000] uppercase tracking-[0.15em] mt-4 mb-2">
+                        <div className="col-span-7 pl-2">
+                          Item Name / Description
+                        </div>
+                        <div className="col-span-2 text-center">Price (₹)</div>
+                        <div className="col-span-2 text-center">Qty</div>
+                        <div className="col-span-1"></div>
+                      </div>
 
-                            {/* Catalog Dropdown Popover */}
-                            {activeCatalogRowId === item.id && (
-                              <div className="absolute z-[80] top-full left-0 mt-1 w-full sm:w-80 max-w-[calc(100vw-2.5rem)] bg-[#FFFFFF] border-2 border-black/10 rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-                                <div className="p-2 border-b border-black/10 bg-[#FFFFFF] flex items-center justify-between gap-2">
-                                  <input
-                                    type="text"
-                                    placeholder="Search catalog items..."
-                                    className="w-full bg-white border border-black/10 focus:border-[#DC2626] rounded-md px-3 py-1.5 text-xs font-semibold focus:outline-none transition-colors"
-                                    value={catalogSearch}
-                                    onChange={(e) =>
-                                      setCatalogSearch(e.target.value)
-                                    }
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={() => setActiveCatalogRowId(null)}
-                                    className="text-[#000000] hover:text-[#A67C1E] cursor-pointer"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                </div>
-                                <div className="max-h-48 overflow-y-auto">
-                                  {catalog.filter((c) =>
-                                    c.name
-                                      .toLowerCase()
-                                      .includes(catalogSearch.toLowerCase()),
-                                  ).length > 0 ? (
-                                    catalog
-                                      .filter((c) =>
-                                        c.name
-                                          .toLowerCase()
-                                          .includes(
-                                            catalogSearch.toLowerCase(),
-                                          ),
-                                      )
-                                      .map((catItem) => {
-                                        const isOutOfStock = catItem.stockQuantity === 0;
-                                        return (
-                                          <div
-                                            key={catItem.id}
-                                            className={`w-full flex items-center border-b border-transparent last:border-0 hover:bg-[#FFFFFF] transition-colors ${
-                                              isOutOfStock ? "opacity-50" : ""
-                                            }`}
-                                          >
-                                            <button
-                                              className={`flex-1 text-left px-4 py-2.5 flex flex-col ${
-                                                isOutOfStock ? "cursor-not-allowed" : "cursor-pointer"
+                      {/* Items List */}
+                      <div className="space-y-4 pt-2 overflow-visible">
+                        {items.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex flex-col sm:grid sm:grid-cols-12 gap-3 sm:gap-4 items-stretch sm:items-center group border-b border-transparent pb-4 pt-1 overflow-visible relative"
+                          >
+                            {/* Item Name / Description Input + Catalog Button */}
+                            <div className="col-span-7 relative flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
+                              <input
+                                type="text"
+                                placeholder="Type custom service description..."
+                                className="flex-1 bg-white border border-black/10 focus:border-[#DC2626] rounded-lg px-4 py-2 text-xs font-semibold text-[#000000] focus:outline-none transition-colors placeholder:text-[#000000] min-w-0"
+                                value={item.name}
+                                onChange={(e) =>
+                                  updateItem(item.id, "name", e.target.value)
+                                }
+                              />
+                              <button
+                                onClick={() => {
+                                  setActiveCatalogRowId(
+                                    activeCatalogRowId === item.id
+                                      ? null
+                                      : item.id,
+                                  );
+                                  setCatalogSearch("");
+                                }}
+                                className="flex items-center justify-center gap-1.5 border border-[#DC2626]/30 bg-[#DC2626]/5 text-[#DC2626] hover:bg-[#DC2626]/10 px-3 py-2 rounded-lg text-[10px] font-bold transition-colors uppercase tracking-wider shrink-0 cursor-pointer w-full sm:w-auto"
+                              >
+                                <List className="w-3.5 h-3.5" />
+                                Catalog
+                              </button>
+
+                              {/* Catalog Dropdown Popover */}
+                              {activeCatalogRowId === item.id && (
+                                <div className="absolute z-[80] top-full left-0 mt-1 w-full sm:w-80 max-w-[calc(100vw-2.5rem)] bg-[#FFFFFF] border-2 border-black/10 rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                  <div className="p-2 border-b border-black/10 bg-[#FFFFFF] flex items-center justify-between gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="Search catalog items..."
+                                      className="w-full bg-white border border-black/10 focus:border-[#DC2626] rounded-md px-3 py-1.5 text-xs font-semibold focus:outline-none transition-colors"
+                                      value={catalogSearch}
+                                      onChange={(e) =>
+                                        setCatalogSearch(e.target.value)
+                                      }
+                                      autoFocus
+                                    />
+                                    <button
+                                      onClick={() =>
+                                        setActiveCatalogRowId(null)
+                                      }
+                                      className="text-[#000000] hover:text-[#A67C1E] cursor-pointer"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  <div className="max-h-48 overflow-y-auto">
+                                    {catalog.filter((c) =>
+                                      c.name
+                                        .toLowerCase()
+                                        .includes(catalogSearch.toLowerCase()),
+                                    ).length > 0 ? (
+                                      catalog
+                                        .filter((c) =>
+                                          c.name
+                                            .toLowerCase()
+                                            .includes(
+                                              catalogSearch.toLowerCase(),
+                                            ),
+                                        )
+                                        .map((catItem) => {
+                                          const isOutOfStock =
+                                            catItem.stockQuantity === 0;
+                                          return (
+                                            <div
+                                              key={catItem.id}
+                                              className={`w-full flex items-center border-b border-transparent last:border-0 hover:bg-[#FFFFFF] transition-colors ${
+                                                isOutOfStock ? "opacity-50" : ""
                                               }`}
-                                              onClick={() => {
-                                                if (isOutOfStock) return;
-                                                updateItem(
-                                                  item.id,
-                                                  "name",
-                                                  catItem.name,
-                                                );
-                                                updateItem(
-                                                  item.id,
-                                                  "product_id",
-                                                  catItem.productId || catItem.id,
-                                                );
-                                                if (catItem.price !== undefined) {
+                                            >
+                                              <button
+                                                className={`flex-1 text-left px-4 py-2.5 flex flex-col ${
+                                                  isOutOfStock
+                                                    ? "cursor-not-allowed"
+                                                    : "cursor-pointer"
+                                                }`}
+                                                onClick={() => {
+                                                  if (isOutOfStock) return;
                                                   updateItem(
                                                     item.id,
-                                                    "price",
-                                                    catItem.price,
+                                                    "name",
+                                                    catItem.name,
                                                   );
-                                                }
-                                                setActiveCatalogRowId(null);
-                                              }}
-                                            >
-                                              <div className="flex justify-between items-center w-full">
-                                                <span className="text-xs font-bold text-[#000000]">
-                                                  {catItem.name}
-                                                </span>
-                                                <span className={`text-[10px] font-bold ${isOutOfStock ? 'text-[#E11D48]' : 'text-green-600'}`}>
-                                                  {isOutOfStock ? 'Out of Stock' : `Stock: ${catItem.stockQuantity}`}
-                                                </span>
-                                              </div>
-                                              {catItem.desc && (
-                                                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#000000] mt-0.5">
-                                                  {catItem.desc}
-                                                </span>
-                                              )}
-                                              {catItem.price !== undefined && (
-                                                <span className="text-[10px] font-bold text-[#DC2626] mt-0.5">
-                                                  ₹{catItem.price}
-                                                </span>
-                                              )}
-                                            </button>
-                                            <div className="flex shrink-0">
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  openEditCatalog(catItem, item.id);
+                                                  updateItem(
+                                                    item.id,
+                                                    "product_id",
+                                                    catItem.productId ||
+                                                      catItem.id,
+                                                  );
+                                                  if (
+                                                    catItem.price !== undefined
+                                                  ) {
+                                                    updateItem(
+                                                      item.id,
+                                                      "price",
+                                                      catItem.price,
+                                                    );
+                                                  }
                                                   setActiveCatalogRowId(null);
                                                 }}
-                                                className="px-3 py-2.5 text-[#000000] hover:text-[#DC2626] transition-colors cursor-pointer"
-                                                title="Edit item"
                                               >
-                                                <Pencil className="w-4 h-4" />
+                                                <div className="flex justify-between items-center w-full">
+                                                  <span className="text-xs font-bold text-[#000000]">
+                                                    {catItem.name}
+                                                  </span>
+                                                  <span
+                                                    className={`text-[10px] font-bold ${isOutOfStock ? "text-[#E11D48]" : "text-green-600"}`}
+                                                  >
+                                                    {isOutOfStock
+                                                      ? "Out of Stock"
+                                                      : `Stock: ${catItem.stockQuantity}`}
+                                                  </span>
+                                                </div>
+                                                {catItem.desc && (
+                                                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#000000] mt-0.5">
+                                                    {catItem.desc}
+                                                  </span>
+                                                )}
+                                                {catItem.price !==
+                                                  undefined && (
+                                                  <span className="text-[10px] font-bold text-[#DC2626] mt-0.5">
+                                                    ₹{catItem.price}
+                                                  </span>
+                                                )}
                                               </button>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  if (window.confirm("Are you sure you want to delete this item from the catalog?")) {
-                                                    deleteFromCatalog(catItem.id);
-                                                  }
-                                                }}
-                                                className="px-3 py-2.5 text-[#000000] hover:text-[#A67C1E] transition-colors cursor-pointer"
-                                                title="Delete item"
-                                              >
-                                                <Trash2 className="w-4 h-4" />
-                                              </button>
+                                              <div className="flex shrink-0">
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openEditCatalog(
+                                                      catItem,
+                                                      item.id,
+                                                    );
+                                                    setActiveCatalogRowId(null);
+                                                  }}
+                                                  className="px-3 py-2.5 text-[#000000] hover:text-[#DC2626] transition-colors cursor-pointer"
+                                                  title="Edit item"
+                                                >
+                                                  <Pencil className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (
+                                                      window.confirm(
+                                                        "Are you sure you want to delete this item from the catalog?",
+                                                      )
+                                                    ) {
+                                                      deleteFromCatalog(
+                                                        catItem.id,
+                                                      );
+                                                    }
+                                                  }}
+                                                  className="px-3 py-2.5 text-[#000000] hover:text-[#A67C1E] transition-colors cursor-pointer"
+                                                  title="Delete item"
+                                                >
+                                                  <Trash2 className="w-4 h-4" />
+                                                </button>
+                                              </div>
                                             </div>
-                                          </div>
-                                        );
-                                      })
-                                   ) : (
-                                    <div className="px-4 py-4 text-center">
-                                      <div className="text-xs text-[#000000] font-semibold mb-2">
-                                        No items match "{catalogSearch}"
+                                          );
+                                        })
+                                    ) : (
+                                      <div className="px-4 py-4 text-center">
+                                        <div className="text-xs text-[#000000] font-semibold mb-2">
+                                          No items match "{catalogSearch}"
+                                        </div>
+                                        <button
+                                          onClick={() => {
+                                            setNewCatName(catalogSearch);
+                                            setCatalogTargetRowId(item.id);
+                                            setShowCatalogModal(true);
+                                            setActiveCatalogRowId(null);
+                                          }}
+                                          className="text-[10px] font-bold text-[#DC2626] bg-[#DC2626]/10 hover:bg-[#DC2626]/20 px-3 py-1.5 rounded uppercase tracking-wider transition-colors cursor-pointer"
+                                        >
+                                          + Add to Catalog
+                                        </button>
                                       </div>
-                                      <button
-                                        onClick={() => {
-                                          setNewCatName(catalogSearch);
-                                          setCatalogTargetRowId(item.id);
-                                          setShowCatalogModal(true);
-                                          setActiveCatalogRowId(null);
-                                        }}
-                                        className="text-[10px] font-bold text-[#DC2626] bg-[#DC2626]/10 hover:bg-[#DC2626]/20 px-3 py-1.5 rounded uppercase tracking-wider transition-colors cursor-pointer"
-                                      >
-                                        + Add to Catalog
-                                      </button>
-                                    </div>
-                                  )}
+                                    )}
+                                  </div>
                                 </div>
+                              )}
+                            </div>
+
+                            {/* Price, Qty, and Trash (Grid on mobile to prevent overflow, grid on desktop) */}
+                            <div className="col-span-5 grid grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-5 gap-2 sm:gap-4 w-full items-center">
+                              {/* Price Input */}
+                              <div className="sm:col-span-2 flex items-center gap-1.5 sm:gap-2 sm:block min-w-0 w-full">
+                                <span className="text-[10px] font-bold text-[#000000] uppercase sm:hidden shrink-0">
+                                  Price:
+                                </span>
+                                <input
+                                  type="number"
+                                  className="w-full min-w-0 text-center bg-white border border-black/10 focus:border-[#DC2626] rounded-lg px-2 sm:px-3 py-2 text-xs font-semibold text-[#000000] focus:outline-none transition-colors"
+                                  value={item.price || ""}
+                                  onChange={(e) =>
+                                    updateItem(
+                                      item.id,
+                                      "price",
+                                      parseFloat(e.target.value) || 0,
+                                    )
+                                  }
+                                  onWheel={(e) => e.currentTarget.blur()}
+                                  placeholder="0"
+                                />
+                              </div>
+
+                              {/* Quantity Counter */}
+                              <div className="sm:col-span-2 flex items-center justify-end gap-1.5 sm:gap-2 sm:block shrink-0">
+                                <span className="text-[10px] font-bold text-[#000000] uppercase sm:hidden shrink-0">
+                                  Qty:
+                                </span>
+                                <div className="flex items-center border border-black/10 bg-white rounded-lg overflow-hidden h-[36px] max-w-[90px] shrink-0">
+                                  <button
+                                    className="w-7 h-full flex items-center justify-center text-[#000000] hover:bg-[#FFFFFF] hover:text-[#A67C1E] font-bold text-xs transition-colors cursor-pointer"
+                                    onClick={() =>
+                                      handleQtyChange(item.id, item.qty - 1)
+                                    }
+                                  >
+                                    −
+                                  </button>
+                                  <span className="flex-1 text-center font-bold text-xs text-[#000000] min-w-[18px]">
+                                    {item.qty}
+                                  </span>
+                                  <button
+                                    className="w-7 h-full flex items-center justify-center text-[#000000] hover:bg-[#FFFFFF] hover:text-[#A67C1E] font-bold text-xs transition-colors cursor-pointer"
+                                    onClick={() =>
+                                      handleQtyChange(item.id, item.qty + 1)
+                                    }
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Trash Button */}
+                              <div className="sm:col-span-1 flex justify-end shrink-0">
+                                <button
+                                  onClick={() => removeItem(item.id)}
+                                  className="text-[#000000] hover:text-[#E11D48] hover:bg-[#FEE2E2] p-2 rounded-lg border border-black/10 hover:border-transparent transition-colors flex items-center justify-center cursor-pointer"
+                                  title="Remove Item"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>{" "}
+                {/* Right Column - Premium Light Order Panel */}
+                <div className="w-full lg:w-[40%] xl:w-[35%] flex flex-col shrink-0 bg-white text-[#000000] border border-black/10 rounded-2xl shadow-sm lg:sticky lg:top-28 lg:self-start transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 overflow-hidden group">
+                  <div className="p-4 sm:p-6 pb-4 border-b border-black/10 flex justify-between items-center bg-[#FFFFFF]">
+                    <h2 className="text-base font-black flex items-center gap-3 text-[#000000] tracking-tight">
+                      <ShoppingBag className="w-4 h-4 text-[#DC2626]" />
+                      Current Order
+                    </h2>
+                    <span
+                      className={`flex items-center gap-2 bg-white border border-black/10 px-3 py-1 rounded-full font-bold text-[9px] ${isOnline ? "text-[#00A86B]" : "text-[#E11D48]"}`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-[#00A86B]" : "bg-[#E11D48]"}`}
+                      ></span>
+                      {isOnline ? "ONLINE ORDER" : "OFFLINE (POS)"}
+                    </span>
+                  </div>
+
+                  <div className="p-4 sm:p-6 space-y-5">
+                    {/* Customer Details Box */}
+                    <div className="bg-[#FFFFFF]/40 border border-black/10 rounded-xl p-4 space-y-2.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-[#000000] font-semibold">
+                          SOURCE
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border ${isOnline ? "border-[#00A86B] text-[#00A86B] bg-[#00A86B]/10" : "border-[#E11D48] text-[#E11D48] bg-[#E11D48]/10"}`}
+                        >
+                          {isOnline ? "ONLINE" : "OFFLINE"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-[#000000] font-semibold">
+                          CUSTOMER
+                        </span>
+                        <span className="font-bold text-[#000000] truncate max-w-[65%] text-right">
+                          {customerName || "-"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-[#000000] font-semibold">
+                          PHONE
+                        </span>
+                        <span className="font-bold text-[#000000]">
+                          {customerPhone || "-"}
+                        </span>
+                      </div>
+
+                      {/* Items summary list inside customer details box */}
+                      <div className="border-t border-black/10 pt-2.5 mt-2.5">
+                        {items.filter((i) => i.name).length === 0 ? (
+                          <div className="text-center py-2 text-[10px] text-[#000000] font-semibold italic">
+                            No items added yet
+                          </div>
+                        ) : (
+                          <div className="max-h-24 overflow-y-auto space-y-1.5 scrollbar-thin pr-1">
+                            {items
+                              .filter((i) => i.name)
+                              .map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex justify-between items-center text-[10px]"
+                                >
+                                  <span className="text-[#000000] font-semibold">
+                                    {item.qty}x {item.name}
+                                  </span>
+                                  <span className="font-bold text-[#DC2626]">
+                                    ₹
+                                    {(item.price * item.qty).toLocaleString(
+                                      undefined,
+                                      { minimumFractionDigits: 2 },
+                                    )}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Discounts section */}
+                    <div className="space-y-4 pt-1">
+                      {/* Manual Discount */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.1em] mb-1.5">
+                          Manual Discount
+                        </label>
+                        <div className="flex gap-2">
+                          <select
+                            value={discountType}
+                            onChange={(e) => {
+                              setDiscountType(
+                                e.target.value as "fixed" | "percent",
+                              );
+                              setSelectedCoupon("none");
+                            }}
+                            className="bg-white border border-black/10 text-[#000000] rounded-lg px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#DC2626] cursor-pointer"
+                          >
+                            <option value="fixed">₹</option>
+                            <option value="percent">%</option>
+                          </select>
+                          <input
+                            type="number"
+                            className="flex-1 text-right bg-white border border-black/10 rounded-lg px-3 py-2 text-xs font-bold text-[#000000] placeholder:text-[#000000] focus:outline-none focus:border-[#DC2626] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-0"
+                            value={discountValue || ""}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            onChange={(e) => {
+                              setDiscountValue(parseFloat(e.target.value) || 0);
+                              setSelectedCoupon("none");
+                            }}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Subtotal & Delivery Breakdown */}
+                      <div className="space-y-2.5 pt-2 border-t border-black/10">
+                        <div className="flex justify-between items-center text-xs font-semibold">
+                          <span className="text-[#000000]">
+                            Subtotal (
+                            {items
+                              .filter((i) => i.name)
+                              .reduce((sum, i) => sum + i.qty, 0)}{" "}
+                            items)
+                          </span>
+                          <span className="font-bold text-[#000000]">
+                            ₹
+                            {subtotal.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center text-xs font-semibold">
+                          <span className="text-[#000000]">Delivery</span>
+                          <input
+                            type="number"
+                            className="w-20 text-right bg-white border border-black/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#000000] placeholder:text-[#000000] focus:outline-none focus:border-[#DC2626]"
+                            value={deliveryFee || ""}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            onChange={(e) =>
+                              setDeliveryFee(parseFloat(e.target.value) || 0)
+                            }
+                            placeholder="0"
+                          />
+                        </div>
+
+                        {/* GST Section (Below Delivery, Above Grand Total) */}
+                        <div className="pt-2">
+                          <div className="flex flex-wrap justify-between items-center gap-2">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <div
+                                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${applyGST ? "bg-[#DC2626]" : "bg-gray-300"}`}
+                              >
+                                <span
+                                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${applyGST ? "translate-x-4" : "translate-x-1"}`}
+                                />
+                              </div>
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={applyGST}
+                                onChange={(e) => setApplyGST(e.target.checked)}
+                              />
+                              <span className="text-xs font-bold text-[#000000] uppercase tracking-wider">
+                                Apply GST
+                              </span>
+                            </label>
+                            {applyGST && (
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    className="w-14 text-right bg-white border border-black/10 rounded-lg px-2 py-1 text-xs font-bold text-[#000000] focus:outline-none focus:border-[#DC2626] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    value={gstPercentage || ""}
+                                    onChange={(e) =>
+                                      setGstPercentage(
+                                        parseFloat(e.target.value) || 0,
+                                      )
+                                    }
+                                    placeholder="%"
+                                  />
+                                  <span className="text-xs font-bold text-[#000000]">
+                                    %
+                                  </span>
+                                </div>
+                                <span className="text-xs font-bold text-[#DC2626] w-16 text-right">
+                                  ₹
+                                  {gstAmount.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </span>
                               </div>
                             )}
                           </div>
-
-                          {/* Price, Qty, and Trash (Grid on mobile to prevent overflow, grid on desktop) */}
-                          <div className="col-span-5 grid grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-5 gap-2 sm:gap-4 w-full items-center">
-                            {/* Price Input */}
-                            <div className="sm:col-span-2 flex items-center gap-1.5 sm:gap-2 sm:block min-w-0 w-full">
-                              <span className="text-[10px] font-bold text-[#000000] uppercase sm:hidden shrink-0">
-                                Price:
-                              </span>
-                              <input
-                                type="number"
-                                className="w-full min-w-0 text-center bg-white border border-black/10 focus:border-[#DC2626] rounded-lg px-2 sm:px-3 py-2 text-xs font-semibold text-[#000000] focus:outline-none transition-colors"
-                                value={item.price || ""}
-                                onChange={(e) =>
-                                  updateItem(
-                                    item.id,
-                                    "price",
-                                    parseFloat(e.target.value) || 0,
-                                  )
-                                }
-                                onWheel={(e) => e.currentTarget.blur()}
-                                placeholder="0"
-                              />
-                            </div>
-
-                            {/* Quantity Counter */}
-                            <div className="sm:col-span-2 flex items-center justify-end gap-1.5 sm:gap-2 sm:block shrink-0">
-                              <span className="text-[10px] font-bold text-[#000000] uppercase sm:hidden shrink-0">
-                                Qty:
-                              </span>
-                              <div className="flex items-center border border-black/10 bg-white rounded-lg overflow-hidden h-[36px] max-w-[90px] shrink-0">
-                                <button
-                                  className="w-7 h-full flex items-center justify-center text-[#000000] hover:bg-[#FFFFFF] hover:text-[#A67C1E] font-bold text-xs transition-colors cursor-pointer"
-                                  onClick={() => handleQtyChange(item.id, item.qty - 1)}
-                                >
-                                  −
-                                </button>
-                                <span className="flex-1 text-center font-bold text-xs text-[#000000] min-w-[18px]">
-                                  {item.qty}
-                                </span>
-                                <button
-                                  className="w-7 h-full flex items-center justify-center text-[#000000] hover:bg-[#FFFFFF] hover:text-[#A67C1E] font-bold text-xs transition-colors cursor-pointer"
-                                  onClick={() => handleQtyChange(item.id, item.qty + 1)}
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Trash Button */}
-                            <div className="sm:col-span-1 flex justify-end shrink-0">
-                              <button
-                                onClick={() => removeItem(item.id)}
-                                className="text-[#000000] hover:text-[#E11D48] hover:bg-[#FEE2E2] p-2 rounded-lg border border-black/10 hover:border-transparent transition-colors flex items-center justify-center cursor-pointer"
-                                title="Remove Item"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>{" "}
-              {/* Right Column - Premium Light Order Panel */}
-              <div className="w-full lg:w-[40%] xl:w-[35%] flex flex-col shrink-0 bg-white text-[#000000] border border-black/10 rounded-2xl shadow-sm lg:sticky lg:top-28 lg:self-start transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 overflow-hidden group">
-                <div className="p-4 sm:p-6 pb-4 border-b border-black/10 flex justify-between items-center bg-[#FFFFFF]">
-                  <h2 className="text-base font-black flex items-center gap-3 text-[#000000] tracking-tight">
-                    <ShoppingBag className="w-4 h-4 text-[#DC2626]" />
-                    Current Order
-                  </h2>
-                  <span
-                    className={`flex items-center gap-2 bg-white border border-black/10 px-3 py-1 rounded-full font-bold text-[9px] ${isOnline ? "text-[#00A86B]" : "text-[#E11D48]"}`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-[#00A86B]" : "bg-[#E11D48]"}`}
-                    ></span>
-                    {isOnline ? "ONLINE ORDER" : "OFFLINE (POS)"}
-                  </span>
-                </div>
-
-                <div className="p-4 sm:p-6 space-y-5">
-                  {/* Customer Details Box */}
-                  <div className="bg-[#FFFFFF]/40 border border-black/10 rounded-xl p-4 space-y-2.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[#000000] font-semibold">
-                        SOURCE
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-widest border ${isOnline ? "border-[#00A86B] text-[#00A86B] bg-[#00A86B]/10" : "border-[#E11D48] text-[#E11D48] bg-[#E11D48]/10"}`}
-                      >
-                        {isOnline ? "ONLINE" : "OFFLINE"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[#000000] font-semibold">
-                        CUSTOMER
-                      </span>
-                      <span className="font-bold text-[#000000] truncate max-w-[65%] text-right">
-                        {customerName || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[#000000] font-semibold">
-                        PHONE
-                      </span>
-                      <span className="font-bold text-[#000000]">
-                        {customerPhone || "-"}
-                      </span>
-                    </div>
-
-                    {/* Items summary list inside customer details box */}
-                    <div className="border-t border-black/10 pt-2.5 mt-2.5">
-                      {items.filter((i) => i.name).length === 0 ? (
-                        <div className="text-center py-2 text-[10px] text-[#000000] font-semibold italic">
-                          No items added yet
-                        </div>
-                      ) : (
-                        <div className="max-h-24 overflow-y-auto space-y-1.5 scrollbar-thin pr-1">
-                          {items
-                            .filter((i) => i.name)
-                            .map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex justify-between items-center text-[10px]"
-                              >
-                                <span className="text-[#000000] font-semibold">
-                                  {item.qty}x {item.name}
-                                </span>
-                                <span className="font-bold text-[#DC2626]">
-                                  ₹
-                                  {(item.price * item.qty).toLocaleString(
-                                    undefined,
-                                    { minimumFractionDigits: 2 },
-                                  )}
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Discounts section */}
-                  <div className="space-y-4 pt-1">
-                    {/* Manual Discount */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-[#000000] uppercase tracking-[0.1em] mb-1.5">
-                        Manual Discount
-                      </label>
-                      <div className="flex gap-2">
-                        <select
-                          value={discountType}
-                          onChange={(e) => {
-                            setDiscountType(
-                              e.target.value as "fixed" | "percent",
-                            );
-                            setSelectedCoupon("none");
-                          }}
-                          className="bg-white border border-black/10 text-[#000000] rounded-lg px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#DC2626] cursor-pointer"
-                        >
-                          <option value="fixed">₹</option>
-                          <option value="percent">%</option>
-                        </select>
-                        <input
-                          type="number"
-                          className="flex-1 text-right bg-white border border-black/10 rounded-lg px-3 py-2 text-xs font-bold text-[#000000] placeholder:text-[#000000] focus:outline-none focus:border-[#DC2626] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-0"
-                          value={discountValue || ""}
-                          onWheel={(e) => e.currentTarget.blur()}
-                          onChange={(e) => {
-                            setDiscountValue(parseFloat(e.target.value) || 0);
-                            setSelectedCoupon("none");
-                          }}
-                          placeholder="0"
-                        />
                       </div>
-                    </div>
 
-                    {/* Subtotal & Delivery Breakdown */}
-                    <div className="space-y-2.5 pt-2 border-t border-black/10">
-                       <div className="flex justify-between items-center text-xs font-semibold">
-                        <span className="text-[#000000]">
-                          Subtotal (
-                          {items
-                            .filter((i) => i.name)
-                            .reduce((sum, i) => sum + i.qty, 0)}{" "}
-                          items)
+                      {/* Grand Total */}
+                      <div className="flex justify-between items-center text-sm font-bold pt-4 border-t border-black/10">
+                        <span className="text-[#000000] uppercase tracking-wider">
+                          Grand Total
                         </span>
-                        <span className="font-bold text-[#000000]">
+                        <span className="text-xl text-[#DC2626] font-black">
                           ₹
-                          {subtotal.toLocaleString(undefined, {
+                          {grandTotal.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                           })}
                         </span>
                       </div>
 
-                      <div className="flex justify-between items-center text-xs font-semibold">
-                        <span className="text-[#000000]">Delivery</span>
+                      {/* Cash Payment */}
+                      <div className="bg-[#FFFFFF]/40 border border-black/10 rounded-xl p-4 mt-2">
+                        <span className="block text-[9px] font-bold text-[#000000] uppercase tracking-wider mb-0.5">
+                          Cash Payment
+                        </span>
+                        <label className="block text-[10px] font-bold text-[#000000] mb-2.5">
+                          Amount Received (₹)
+                        </label>
                         <input
                           type="number"
-                          className="w-20 text-right bg-white border border-black/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#000000] placeholder:text-[#000000] focus:outline-none focus:border-[#DC2626]"
-                          value={deliveryFee || ""}
+                          className="w-full bg-white border border-black/10 focus:border-[#DC2626] rounded-lg px-3 py-2 text-base font-bold text-[#000000] placeholder:text-[#000000] focus:outline-none transition-colors"
+                          value={cashReceived || ""}
                           onWheel={(e) => e.currentTarget.blur()}
                           onChange={(e) =>
-                            setDeliveryFee(parseFloat(e.target.value) || 0)
+                            setCashReceived(parseFloat(e.target.value) || 0)
                           }
-                          placeholder="0"
+                          placeholder="0.00"
                         />
                       </div>
 
-                      {/* GST Section (Below Delivery, Above Grand Total) */}
-                      <div className="pt-2">
-                        <div className="flex flex-wrap justify-between items-center gap-2">
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <div className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${applyGST ? 'bg-[#DC2626]' : 'bg-gray-300'}`}>
-                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${applyGST ? 'translate-x-4' : 'translate-x-1'}`} />
-                            </div>
-                            <input
-                              type="checkbox"
-                              className="sr-only"
-                              checked={applyGST}
-                              onChange={(e) => setApplyGST(e.target.checked)}
-                            />
-                            <span className="text-xs font-bold text-[#000000] uppercase tracking-wider">
-                              Apply GST
-                            </span>
-                          </label>
-                          {applyGST && (
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  className="w-14 text-right bg-white border border-black/10 rounded-lg px-2 py-1 text-xs font-bold text-[#000000] focus:outline-none focus:border-[#DC2626] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                  value={gstPercentage || ""}
-                                  onChange={(e) => setGstPercentage(parseFloat(e.target.value) || 0)}
-                                  placeholder="%"
-                                />
-                                <span className="text-xs font-bold text-[#000000]">%</span>
-                              </div>
-                              <span className="text-xs font-bold text-[#DC2626] w-16 text-right">
-                                ₹{gstAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                          )}
+                      {/* Change Return */}
+                      {cashReceived > 0 && (
+                        <div className="flex justify-between items-center bg-white border border-black/10 rounded-lg p-3 text-xs">
+                          <span className="font-bold text-[#000000] uppercase tracking-[0.05em]">
+                            Change Return
+                          </span>
+                          <span
+                            className={`font-black text-sm ${cashReceived >= grandTotal ? "text-[#00A86B]" : "text-[#E11D48]"}`}
+                          >
+                            ₹
+                            {Math.max(
+                              0,
+                              cashReceived - grandTotal,
+                            ).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
                         </div>
-                      </div>
-                    </div>
+                      )}
 
-                    {/* Grand Total */}
-                    <div className="flex justify-between items-center text-sm font-bold pt-4 border-t border-black/10">
-                      <span className="text-[#000000] uppercase tracking-wider">
-                        Grand Total
-                      </span>
-                      <span className="text-xl text-[#DC2626] font-black">
-                        ₹
-                        {grandTotal.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                        })}
-                      </span>
-                    </div>
-
-                    {/* Cash Payment */}
-                    <div className="bg-[#FFFFFF]/40 border border-black/10 rounded-xl p-4 mt-2">
-                      <span className="block text-[9px] font-bold text-[#000000] uppercase tracking-wider mb-0.5">
-                        Cash Payment
-                      </span>
-                      <label className="block text-[10px] font-bold text-[#000000] mb-2.5">
-                        Amount Received (₹)
-                      </label>
-                      <input
-                        type="number"
-                        className="w-full bg-white border border-black/10 focus:border-[#DC2626] rounded-lg px-3 py-2 text-base font-bold text-[#000000] placeholder:text-[#000000] focus:outline-none transition-colors"
-                        value={cashReceived || ""}
-                        onWheel={(e) => e.currentTarget.blur()}
-                        onChange={(e) =>
-                          setCashReceived(parseFloat(e.target.value) || 0)
-                        }
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    {/* Change Return */}
-                    {cashReceived > 0 && (
-                      <div className="flex justify-between items-center bg-white border border-black/10 rounded-lg p-3 text-xs">
-                        <span className="font-bold text-[#000000] uppercase tracking-[0.05em]">
-                          Change Return
-                        </span>
-                        <span
-                          className={`font-black text-sm ${cashReceived >= grandTotal ? "text-[#00A86B]" : "text-[#E11D48]"}`}
-                        >
-                          ₹
-                          {Math.max(
-                            0,
-                            cashReceived - grandTotal,
-                          ).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Send Bill Button */}
-                    <button
-                      onClick={() => handleSendWhatsApp('business')}
-                      className="w-full mt-2 bg-[#10B981] hover:bg-[#059669] text-white py-3 rounded-lg font-bold text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-transform active:scale-[0.98] shadow-[0_4px_14px_rgba(16,185,129,0.4)] cursor-pointer"
-                    >
-                      <svg
-                        className="w-3.5 h-3.5"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
+                      {/* Send Bill Button */}
+                      <button
+                        onClick={() => handleSendWhatsApp("business")}
+                        className="w-full mt-2 bg-[#10B981] hover:bg-[#059669] text-white py-3 rounded-lg font-bold text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-transform active:scale-[0.98] shadow-[0_4px_14px_rgba(16,185,129,0.4)] cursor-pointer"
                       >
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.012c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
-                      </svg>
-                      Send Bill Via WhatsApp
-                    </button>
+                        <svg
+                          className="w-3.5 h-3.5"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.012c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
+                        </svg>
+                        Send Bill Via WhatsApp
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )
-      )}
+          ))}
 
         {activeTab === "orders" && (
           <div className="flex-1 flex flex-col max-w-[1400px] mx-auto w-full pb-8 pr-2 animate-in fade-in duration-300">
@@ -3197,16 +3581,22 @@ export default function POSBilling() {
                                 {order.id}
                               </td>
                               <td className="p-4 text-xs font-bold text-[#000000] whitespace-nowrap">
-                                {new Date(order.date).toLocaleDateString('en-IN', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric'
-                                })}
+                                {new Date(order.date).toLocaleDateString(
+                                  "en-IN",
+                                  {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  },
+                                )}
                                 <span className="block text-[10px] font-semibold text-black/60">
-                                  {new Date(order.date).toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
+                                  {new Date(order.date).toLocaleTimeString(
+                                    "en-US",
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
                                 </span>
                               </td>
                               <td className="p-4 text-xs font-bold text-[#000000]">
@@ -3234,17 +3624,31 @@ export default function POSBilling() {
                                     onClick={() => resendWhatsApp(order)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[#10B981] hover:bg-[#059669] text-white rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap cursor-pointer"
                                   >
-                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                    <svg
+                                      className="w-3 h-3"
+                                      viewBox="0 0 24 24"
+                                      fill="currentColor"
+                                    >
                                       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.012c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
-                                      </svg>
+                                    </svg>
                                     WhatsApp
                                   </button>
                                   <button
                                     onClick={() => setActiveInvoiceId(order.id)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[#DC2626] hover:bg-[#9A7B1C] text-white rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap cursor-pointer"
                                   >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    <svg
+                                      className="w-3.5 h-3.5"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                      />
                                     </svg>
                                     Invoice
                                   </button>
@@ -3254,9 +3658,11 @@ export default function POSBilling() {
                                   >
                                     Details
                                   </button>
-                                  {role === 'admin' && (
+                                  {role === "admin" && (
                                     <button
-                                      onClick={() => handleDeleteOrder(order.id)}
+                                      onClick={() =>
+                                        handleDeleteOrder(order.id)
+                                      }
                                       className="text-[10px] font-bold text-[#E11D48] hover:text-white hover:bg-[#E11D48] border border-[#E11D48] px-2 py-1.5 rounded uppercase tracking-wider transition-colors ml-2"
                                     >
                                       Delete
@@ -3552,7 +3958,11 @@ export default function POSBilling() {
                                   </td>
                                   <td className="p-3 text-xs font-semibold text-[#000000] text-right">
                                     {order.items.reduce(
-                                      (sum, i) => sum + ((i.name && !i.name.startsWith("GST (")) ? i.qty : 0),
+                                      (sum, i) =>
+                                        sum +
+                                        (i.name && !i.name.startsWith("GST (")
+                                          ? i.qty
+                                          : 0),
                                       0,
                                     )}{" "}
                                     pcs
@@ -3842,7 +4252,10 @@ export default function POSBilling() {
                       <div className="flex justify-between items-center mb-6">
                         <div>
                           <h3 className="font-bold text-[#000000] text-sm mb-2 flex items-center">
-                            Revenue Trend This Year <span className="text-[#DC2626] font-black ml-1.5">{now.getFullYear()}</span>
+                            Revenue Trend This Year{" "}
+                            <span className="text-[#DC2626] font-black ml-1.5">
+                              {now.getFullYear()}
+                            </span>
                           </h3>
                           <div className="flex items-center gap-3">
                             <span className="text-xl font-black text-[#000000]">
@@ -3910,7 +4323,10 @@ export default function POSBilling() {
                       <div className="flex justify-between items-center mb-6">
                         <div>
                           <h3 className="font-bold text-[#000000] text-sm flex items-center">
-                            Revenue This Week <span className="text-[#DC2626] font-black ml-1.5">(Week {currentWeekNumber} of {now.getFullYear()})</span>
+                            Revenue This Week{" "}
+                            <span className="text-[#DC2626] font-black ml-1.5">
+                              (Week {currentWeekNumber} of {now.getFullYear()})
+                            </span>
                           </h3>
                           <p className="text-[10px] text-[#000000] font-semibold mt-1">
                             ₹
@@ -4261,8 +4677,8 @@ export default function POSBilling() {
                     </div>
                   </div>
 
-                  {analyticsFilteredOrders.filter((o) => o.discount > 0).length ===
-                  0 ? (
+                  {analyticsFilteredOrders.filter((o) => o.discount > 0)
+                    .length === 0 ? (
                     <div className="text-center text-[#000000] text-sm font-semibold py-12">
                       No promotional discounts given in this period.
                     </div>
@@ -4290,7 +4706,8 @@ export default function POSBilling() {
                             .filter((o) => o.discount > 0)
                             .filter((o) => {
                               const q = couponSearchQuery.toLowerCase();
-                              const couponCode = getCouponCodeForOrder(o).toLowerCase();
+                              const couponCode =
+                                getCouponCodeForOrder(o).toLowerCase();
                               return (
                                 o.id.toLowerCase().includes(q) ||
                                 couponCode.includes(q) ||
@@ -4312,7 +4729,8 @@ export default function POSBilling() {
                               .filter((o) => o.discount > 0)
                               .filter((o) => {
                                 const q = couponSearchQuery.toLowerCase();
-                                const couponCode = getCouponCodeForOrder(o).toLowerCase();
+                                const couponCode =
+                                  getCouponCodeForOrder(o).toLowerCase();
                                 return (
                                   o.id.toLowerCase().includes(q) ||
                                   couponCode.includes(q) ||
@@ -4360,11 +4778,13 @@ export default function POSBilling() {
                   Stock Alerts
                 </h2>
                 <p className="text-xs text-[#000000] font-semibold mt-1">
-                  Low stock and near-expiry items — refill or rotate before they run out.
+                  Low stock and near-expiry items — refill or rotate before they
+                  run out.
                 </p>
               </div>
               <div className="text-xs font-bold text-[#000000] bg-[#FFFFFF] border border-black/10 px-4 py-2 rounded-lg">
-                {lowStockItems.length} alert{lowStockItems.length === 1 ? "" : "s"}
+                {lowStockItems.length} alert
+                {lowStockItems.length === 1 ? "" : "s"}
               </div>
             </div>
 
@@ -4375,7 +4795,8 @@ export default function POSBilling() {
                 </div>
                 <p className="text-base font-bold text-[#000000]">All good.</p>
                 <p className="text-xs font-semibold text-[#000000]/60 mt-1">
-                  No products below their low-stock threshold, and nothing expiring in the next 30 days.
+                  No products below their low-stock threshold, and nothing
+                  expiring in the next 30 days.
                 </p>
               </div>
             ) : (
@@ -4384,38 +4805,69 @@ export default function POSBilling() {
                   <table className="w-full text-left border-collapse min-w-[720px]">
                     <thead className="bg-[#FAFAFA] border-b border-black/10">
                       <tr>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider">Product</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Stock</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Threshold</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Expiry</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Status</th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider">
+                          Product
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">
+                          Stock
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">
+                          Threshold
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">
+                          Expiry
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">
+                          Status
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-black/5">
                       {lowStockItems.map((p) => {
-                        const stock = typeof p.stockQuantity === "number" ? p.stockQuantity : 0;
-                        const threshold = typeof p.lowStockThreshold === "number" ? p.lowStockThreshold : 10;
+                        const stock =
+                          typeof p.stockQuantity === "number"
+                            ? p.stockQuantity
+                            : 0;
+                        const threshold =
+                          typeof p.lowStockThreshold === "number"
+                            ? p.lowStockThreshold
+                            : 10;
                         const days = daysUntil(p.expiryDate);
                         const isLow = stock <= threshold;
                         const isExpired = days !== null && days < 0;
-                        const isExpiringSoon = days !== null && days >= 0 && days <= 30;
+                        const isExpiringSoon =
+                          days !== null && days >= 0 && days <= 30;
                         return (
                           <tr key={p.id} className="hover:bg-[#FAFAFA]">
                             <td className="p-3">
-                              <div className="text-sm font-bold text-[#000000]">{p.name}</div>
+                              <div className="text-sm font-bold text-[#000000]">
+                                {p.name}
+                              </div>
                               {(p.batchNo || p.manufacturer) && (
                                 <div className="text-[10px] font-semibold text-[#000000]/60 mt-0.5">
-                                  {p.manufacturer}{p.manufacturer && p.batchNo ? " • " : ""}{p.batchNo ? `Batch ${p.batchNo}` : ""}
+                                  {p.manufacturer}
+                                  {p.manufacturer && p.batchNo ? " • " : ""}
+                                  {p.batchNo ? `Batch ${p.batchNo}` : ""}
                                 </div>
                               )}
                             </td>
-                            <td className={`p-3 text-center text-sm font-black ${isLow ? "text-[#E11D48]" : "text-[#000000]"}`}>{stock}</td>
-                            <td className="p-3 text-center text-sm font-bold text-[#000000]/70">{threshold}</td>
-                            <td className={`p-3 text-center text-xs font-bold ${isExpired ? "text-[#E11D48]" : isExpiringSoon ? "text-[#D97706]" : "text-[#000000]/70"}`}>
+                            <td
+                              className={`p-3 text-center text-sm font-black ${isLow ? "text-[#E11D48]" : "text-[#000000]"}`}
+                            >
+                              {stock}
+                            </td>
+                            <td className="p-3 text-center text-sm font-bold text-[#000000]/70">
+                              {threshold}
+                            </td>
+                            <td
+                              className={`p-3 text-center text-xs font-bold ${isExpired ? "text-[#E11D48]" : isExpiringSoon ? "text-[#D97706]" : "text-[#000000]/70"}`}
+                            >
                               {p.expiryDate || "—"}
                               {days !== null && (
                                 <div className="text-[10px] font-semibold">
-                                  {days < 0 ? `Expired ${Math.abs(days)}d ago` : `${days}d left`}
+                                  {days < 0
+                                    ? `Expired ${Math.abs(days)}d ago`
+                                    : `${days}d left`}
                                 </div>
                               )}
                             </td>
@@ -4458,26 +4910,27 @@ export default function POSBilling() {
                   Inventory
                 </h2>
                 <p className="text-xs text-[#000000] font-semibold mt-1">
-                  Manage medicines — add, edit, delete, and track expiry & stock levels.
+                  Manage medicines — add, edit, delete, and track expiry & stock
+                  levels.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                 <div className="flex bg-gray-100 p-1 rounded-lg">
                   <button
-                    onClick={() => setScheduleFilter('ALL')}
-                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${scheduleFilter === 'ALL' ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}
+                    onClick={() => setScheduleFilter("ALL")}
+                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${scheduleFilter === "ALL" ? "bg-white shadow-sm text-black" : "text-gray-500 hover:text-black"}`}
                   >
                     All
                   </button>
                   <button
-                    onClick={() => setScheduleFilter('H')}
-                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${scheduleFilter === 'H' ? 'bg-white shadow-sm text-red-600' : 'text-gray-500 hover:text-black'}`}
+                    onClick={() => setScheduleFilter("H")}
+                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${scheduleFilter === "H" ? "bg-white shadow-sm text-red-600" : "text-gray-500 hover:text-black"}`}
                   >
                     Sch-H
                   </button>
                   <button
-                    onClick={() => setScheduleFilter('H1')}
-                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${scheduleFilter === 'H1' ? 'bg-white shadow-sm text-purple-600' : 'text-gray-500 hover:text-black'}`}
+                    onClick={() => setScheduleFilter("H1")}
+                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${scheduleFilter === "H1" ? "bg-white shadow-sm text-purple-600" : "text-gray-500 hover:text-black"}`}
                   >
                     Sch-H1
                   </button>
@@ -4517,7 +4970,9 @@ export default function POSBilling() {
                 <div className="w-14 h-14 rounded-full bg-[#DC2626]/10 flex items-center justify-center mx-auto mb-4">
                   <Boxes className="w-7 h-7 text-[#DC2626]" />
                 </div>
-                <p className="text-base font-bold text-[#000000]">No products yet.</p>
+                <p className="text-base font-bold text-[#000000]">
+                  No products yet.
+                </p>
                 <p className="text-xs font-semibold text-[#000000]/60 mt-1 mb-4">
                   Add your first medicine to start tracking stock and expiry.
                 </p>
@@ -4539,175 +4994,287 @@ export default function POSBilling() {
                   <table className="w-full text-left border-collapse min-w-[900px]">
                     <thead className="bg-[#FAFAFA] border-b border-black/10">
                       <tr>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider">Product</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Schedule</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-right">Price</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Stock</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Expiry</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider">Batch / Mfr</th>
-                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-right">Actions</th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider">
+                          Product
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">
+                          Schedule
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-right">
+                          Price
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">
+                          Stock
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">
+                          Expiry
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider">
+                          Batch / Mfr
+                        </th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-right">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-black/5">
                       {filteredInventory.map((p) => {
-                        const stock = typeof p.stockQuantity === "number" ? p.stockQuantity : 0;
-                        const threshold = typeof p.lowStockThreshold === "number" ? p.lowStockThreshold : 10;
+                        const stock =
+                          typeof p.stockQuantity === "number"
+                            ? p.stockQuantity
+                            : 0;
+                        const threshold =
+                          typeof p.lowStockThreshold === "number"
+                            ? p.lowStockThreshold
+                            : 10;
                         const days = daysUntil(p.expiryDate);
                         const isLow = stock <= threshold;
                         const isExpired = days !== null && days < 0;
-                        const isExpiringSoon = days !== null && days >= 0 && days <= 90;
+                        const isExpiringSoon =
+                          days !== null && days >= 0 && days <= 90;
                         const isExpanded = expandedProductId === p.id;
-                        const sch = p.scheduleCategory || 'NONE';
+                        const sch = p.scheduleCategory || "NONE";
                         return (
                           <React.Fragment key={p.id}>
-                          <tr 
-                            className="hover:bg-[#FAFAFA] cursor-pointer transition-colors"
-                            onClick={() => setExpandedProductId(isExpanded ? null : p.id)}
-                          >
-                            <td className="p-3">
-                              <div className="text-sm font-bold text-[#000000] flex items-center gap-2">
-                                {p.name}
-                                {p.batches && p.batches.length > 1 && (
-                                  <span className="text-[9px] bg-black/5 px-1.5 py-0.5 rounded text-black/60">
-                                    {p.batches.length} batches
+                            <tr
+                              className="hover:bg-[#FAFAFA] cursor-pointer transition-colors"
+                              onClick={() =>
+                                setExpandedProductId(isExpanded ? null : p.id)
+                              }
+                            >
+                              <td className="p-3">
+                                <div className="text-sm font-bold text-[#000000] flex items-center gap-2">
+                                  {p.name}
+                                  {p.batches && p.batches.length > 1 && (
+                                    <span className="text-[9px] bg-black/5 px-1.5 py-0.5 rounded text-black/60">
+                                      {p.batches.length} batches
+                                    </span>
+                                  )}
+                                </div>
+                                {p.desc && (
+                                  <div className="text-[10px] font-semibold text-[#000000]/60 mt-0.5">
+                                    {p.desc}
+                                  </div>
+                                )}
+                                {p.hsnCode && (
+                                  <div className="text-[9px] font-bold text-[#000000]/40 mt-0.5 uppercase tracking-wider">
+                                    HSN {p.hsnCode}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-3 text-center">
+                                {sch === "H" ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-red-700 bg-red-100 px-2 py-1 rounded">
+                                    H
+                                  </span>
+                                ) : sch === "H1" ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100 px-2 py-1 rounded">
+                                    H1
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-[#000000]/40">
+                                    —
                                   </span>
                                 )}
-                              </div>
-                              {p.desc && (
-                                <div className="text-[10px] font-semibold text-[#000000]/60 mt-0.5">{p.desc}</div>
-                              )}
-                              {p.hsnCode && (
-                                <div className="text-[9px] font-bold text-[#000000]/40 mt-0.5 uppercase tracking-wider">HSN {p.hsnCode}</div>
-                              )}
-                            </td>
-                            <td className="p-3 text-center">
-                              {sch === 'H' ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-red-700 bg-red-100 px-2 py-1 rounded">
-                                  H
-                                </span>
-                              ) : sch === 'H1' ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100 px-2 py-1 rounded">
-                                  H1
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-[#000000]/40">—</span>
-                              )}
-                            </td>
-                            <td className="p-3 text-right text-sm font-black text-[#000000]">
-                              ₹{(p.price ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </td>
-                            <td className="p-3 text-center">
-                              <div className={`text-sm font-black ${isLow ? "text-[#E11D48]" : "text-[#000000]"}`}>
-                                {stock}
-                              </div>
-                              <div className="text-[9px] font-semibold text-[#000000]/50">min {threshold}</div>
-                            </td>
-                            <td className={`p-3 text-center text-xs font-bold ${isExpired ? "text-[#E11D48]" : isExpiringSoon ? "text-[#D97706]" : "text-[#000000]/70"}`}>
-                              {p.expiryDate || "—"}
-                              {days !== null && (
-                                <div className="text-[9px] font-semibold">
-                                  {days < 0 ? `Expired ${Math.abs(days)}d ago` : `${days}d left`}
+                              </td>
+                              <td className="p-3 text-right text-sm font-black text-[#000000]">
+                                ₹
+                                {(p.price ?? 0).toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                })}
+                              </td>
+                              <td className="p-3 text-center">
+                                <div
+                                  className={`text-sm font-black ${isLow ? "text-[#E11D48]" : "text-[#000000]"}`}
+                                >
+                                  {stock}
                                 </div>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <div className="text-xs font-semibold text-[#000000]">
-                                {p.manufacturer || <span className="text-[#000000]/40">—</span>}
-                              </div>
-                              <div className="text-[10px] font-semibold text-[#000000]/50">
-                                {p.batchNo ? `Batch ${p.batchNo}` : ""}
-                              </div>
-                            </td>
-                            <td className="p-3 text-right">
-                              <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  onClick={() => openEditCatalog(p)}
-                                  className="text-[10px] font-bold text-[#DC2626] hover:text-white hover:bg-[#DC2626] border border-[#DC2626]/30 px-2.5 py-1.5 rounded uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1"
-                                >
-                                  <Pencil className="w-3 h-3" /> Edit
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    if (window.confirm(`Delete "${p.name}" from inventory? This cannot be undone.`)) {
-                                      deleteFromCatalog(p.id);
-                                    }
-                                  }}
-                                  className="text-[10px] font-bold text-[#E11D48] hover:text-white hover:bg-[#E11D48] border border-[#E11D48]/30 px-2.5 py-1.5 rounded uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1"
-                                >
-                                  <Trash2 className="w-3 h-3" /> Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                          {isExpanded && (
-                            <tr className="bg-[#FAFAFA] border-b border-black/5">
-                              <td colSpan={7} className="p-4">
-                                <div className="bg-white border border-black/10 rounded-lg p-3 shadow-sm">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h4 className="text-[10px] font-bold text-black uppercase tracking-wider">Batch Details</h4>
-                                    <button
-                                      onClick={() => {
-                                        setBatchTargetProductId(p.id);
-                                        resetCatalogForm();
-                                        setShowBatchModal(true);
-                                      }}
-                                      className="text-[10px] font-bold text-white bg-[#1E40AF] hover:bg-[#DC2626] px-2 py-1 rounded transition-colors cursor-pointer"
-                                    >
-                                      + Add Batch
-                                    </button>
+                                <div className="text-[9px] font-semibold text-[#000000]/50">
+                                  min {threshold}
+                                </div>
+                              </td>
+                              <td
+                                className={`p-3 text-center text-xs font-bold ${isExpired ? "text-[#E11D48]" : isExpiringSoon ? "text-[#D97706]" : "text-[#000000]/70"}`}
+                              >
+                                {p.expiryDate || "—"}
+                                {days !== null && (
+                                  <div className="text-[9px] font-semibold">
+                                    {days < 0
+                                      ? `Expired ${Math.abs(days)}d ago`
+                                      : `${days}d left`}
                                   </div>
-                                  <table className="w-full text-left text-xs">
-                                    <thead>
-                                      <tr className="border-b border-black/5 text-[#000000]/60">
-                                        <th className="py-1.5 font-semibold">Batch No</th>
-                                        <th className="py-1.5 font-semibold">Arrived At</th>
-                                        <th className="py-1.5 font-semibold">Mfg Date</th>
-                                        <th className="py-1.5 font-semibold">Expiry Date</th>
-                                        <th className="py-1.5 font-semibold">Cost Price</th>
-                                        <th className="py-1.5 font-semibold">Selling Price</th>
-                                        <th className="py-1.5 font-semibold text-right">Stock</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {p.batches && p.batches.length > 0 ? p.batches.map((b: any) => {
-                                        let batchExpiry = b.expiry_date;
-                                        if (batchExpiry && batchExpiry.includes("T")) {
-                                          batchExpiry = batchExpiry.split("T")[0];
-                                        }
-                                        let batchArrival = b.arrived_at;
-                                        if (batchArrival && batchArrival.includes("T")) {
-                                          batchArrival = batchArrival.split("T")[0];
-                                        }
-                                        return (
-                                          <tr key={b.id} className="border-b border-black/5 last:border-0">
-                                            <td className="py-1.5 font-bold">{b.batch_no || "—"}</td>
-                                            <td className="py-1.5">{batchArrival || "—"}</td>
-                                            <td className="py-1.5">{b.mfg_date || "—"}</td>
-                                            <td className="py-1.5">{batchExpiry || "—"}</td>
-                                            <td className="py-1.5">₹{Number(b.cost_price).toLocaleString()}</td>
-                                            <td className="py-1.5">₹{Number(b.selling_price).toLocaleString()}</td>
-                                            <td className={`py-1.5 text-right font-black ${b.stock_quantity > 0 ? "text-green-600" : "text-[#E11D48]"}`}>
-                                              {b.stock_quantity}
-                                            </td>
-                                          </tr>
-                                        );
-                                      }) : (
-                                        <tr>
-                                          <td colSpan={7} className="py-3 text-center text-[10px] font-semibold text-black/40">No batches available.</td>
-                                        </tr>
-                                      )}
-                                    </tbody>
-                                  </table>
+                                )}
+                              </td>
+                              <td className="p-3">
+                                <div className="text-xs font-semibold text-[#000000]">
+                                  {p.manufacturer || (
+                                    <span className="text-[#000000]/40">—</span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] font-semibold text-[#000000]/50">
+                                  {p.batchNo ? `Batch ${p.batchNo}` : ""}
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">
+                                <div
+                                  className="flex justify-end gap-1.5"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    onClick={() => quickAddStock(p)}
+                                    className="text-[10px] font-bold text-[#10B981] hover:text-white hover:bg-[#10B981] border border-[#10B981]/30 px-2.5 py-1.5 rounded uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1"
+                                  >
+                                    <Plus className="w-3 h-3" /> Stock
+                                  </button>
+                                  <button
+                                    onClick={() => openEditCatalog(p)}
+                                    className="text-[10px] font-bold text-[#DC2626] hover:text-white hover:bg-[#DC2626] border border-[#DC2626]/30 px-2.5 py-1.5 rounded uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1"
+                                  >
+                                    <Pencil className="w-3 h-3" /> Edit
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (
+                                        window.confirm(
+                                          `Delete "${p.name}" from inventory? This cannot be undone.`,
+                                        )
+                                      ) {
+                                        deleteFromCatalog(p.id);
+                                      }
+                                    }}
+                                    className="text-[10px] font-bold text-[#E11D48] hover:text-white hover:bg-[#E11D48] border border-[#E11D48]/30 px-2.5 py-1.5 rounded uppercase tracking-wider transition-colors cursor-pointer inline-flex items-center gap-1"
+                                  >
+                                    <Trash2 className="w-3 h-3" /> Delete
+                                  </button>
                                 </div>
                               </td>
                             </tr>
-                          )}
+                            {isExpanded && (
+                              <tr className="bg-[#FAFAFA] border-b border-black/5">
+                                <td colSpan={7} className="p-4">
+                                  <div className="bg-white border border-black/10 rounded-lg p-3 shadow-sm">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <h4 className="text-[10px] font-bold text-black uppercase tracking-wider">
+                                        Batch Details
+                                      </h4>
+                                      <button
+                                        onClick={() => {
+                                          setBatchTargetProductId(p.id);
+                                          resetCatalogForm();
+                                          setShowBatchModal(true);
+                                        }}
+                                        className="text-[10px] font-bold text-white bg-[#1E40AF] hover:bg-[#DC2626] px-2 py-1 rounded transition-colors cursor-pointer"
+                                      >
+                                        + Add Batch
+                                      </button>
+                                    </div>
+                                    <table className="w-full text-left text-xs">
+                                      <thead>
+                                        <tr className="border-b border-black/5 text-[#000000]/60">
+                                          <th className="py-1.5 font-semibold">
+                                            Batch No
+                                          </th>
+                                          <th className="py-1.5 font-semibold">
+                                            Arrived At
+                                          </th>
+                                          <th className="py-1.5 font-semibold">
+                                            Mfg Date
+                                          </th>
+                                          <th className="py-1.5 font-semibold">
+                                            Expiry Date
+                                          </th>
+                                          <th className="py-1.5 font-semibold">
+                                            Cost Price
+                                          </th>
+                                          <th className="py-1.5 font-semibold">
+                                            Selling Price
+                                          </th>
+                                          <th className="py-1.5 font-semibold text-right">
+                                            Stock
+                                          </th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {p.batches && p.batches.length > 0 ? (
+                                          p.batches.map((b: any) => {
+                                            let batchExpiry = b.expiry_date;
+                                            if (
+                                              batchExpiry &&
+                                              batchExpiry.includes("T")
+                                            ) {
+                                              batchExpiry =
+                                                batchExpiry.split("T")[0];
+                                            }
+                                            let batchArrival = b.arrived_at;
+                                            if (
+                                              batchArrival &&
+                                              batchArrival.includes("T")
+                                            ) {
+                                              batchArrival =
+                                                batchArrival.split("T")[0];
+                                            }
+                                            return (
+                                              <tr
+                                                key={b.id}
+                                                className="border-b border-black/5 last:border-0"
+                                              >
+                                                <td className="py-1.5 font-bold">
+                                                  {b.batch_no || "—"}
+                                                </td>
+                                                <td className="py-1.5">
+                                                  {batchArrival || "—"}
+                                                </td>
+                                                <td className="py-1.5">
+                                                  {b.mfg_date || "—"}
+                                                </td>
+                                                <td className="py-1.5">
+                                                  {batchExpiry || "—"}
+                                                </td>
+                                                <td className="py-1.5">
+                                                  ₹
+                                                  {Number(
+                                                    b.cost_price,
+                                                  ).toLocaleString()}
+                                                </td>
+                                                <td className="py-1.5">
+                                                  ₹
+                                                  {Number(
+                                                    b.selling_price,
+                                                  ).toLocaleString()}
+                                                </td>
+                                                <td
+                                                  className={`py-1.5 text-right font-black ${b.stock_quantity > 0 ? "text-green-600" : "text-[#E11D48]"}`}
+                                                >
+                                                  {b.stock_quantity}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })
+                                        ) : (
+                                          <tr>
+                                            <td
+                                              colSpan={7}
+                                              className="py-3 text-center text-[10px] font-semibold text-black/40"
+                                            >
+                                              No batches available.
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
                           </React.Fragment>
                         );
                       })}
                       {filteredInventory.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="p-8 text-center text-xs font-semibold text-[#000000]/60">
+                          <td
+                            colSpan={6}
+                            className="p-8 text-center text-xs font-semibold text-[#000000]/60"
+                          >
                             No products match &quot;{inventorySearch}&quot;.
                           </td>
                         </tr>
@@ -4870,11 +5437,116 @@ export default function POSBilling() {
                 </button>
               </div>
               <div className="flex-1 w-full bg-gray-50 overflow-hidden relative">
-                <iframe 
-                  src={`/invoice/${activeInvoiceId}`} 
+                <iframe
+                  src={`/invoice/${activeInvoiceId}`}
                   className="w-full h-full border-none absolute inset-0"
                   title={`Invoice ${activeInvoiceId}`}
                 />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Low Stock Alert Modal */}
+        {showLowStockAlertModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[500] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 animate-in zoom-in-95 duration-200 border border-black/10">
+              <div className="p-6 border-b border-black/10">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#E11D48]/10 flex items-center justify-center">
+                      <AlertTriangle className="w-5 h-5 text-[#E11D48]" />
+                    </div>
+                    <h3 className="font-black text-lg text-black tracking-tight">Stock Alert</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowLowStockAlertModal(false)}
+                    className="text-black/40 hover:text-black transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-sm font-semibold text-black/70">
+                  The following products have low or zero stock nu please:
+                </p>
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto p-2 bg-gray-50/50">
+                <ul className="space-y-2 p-2">
+                  {lowStockAlertProducts.map((p) => (
+                    <li key={p.id} className="bg-white p-3 rounded-lg border border-black/5 flex justify-between items-center shadow-sm">
+                      <span className="text-xs font-bold text-black">{p.name}</span>
+                      <span className="text-xs font-black text-[#E11D48]">
+                        Stock: {typeof p.stockQuantity === 'number' ? p.stockQuantity : 0}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-4 border-t border-black/10 bg-white">
+                <button
+                  onClick={() => setShowLowStockAlertModal(false)}
+                  className="w-full py-3 bg-[#E11D48] hover:bg-[#BE123C] text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
+                >
+                  Acknowledge
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Add Stock Modal */}
+        {showQuickAddStockModal && quickAddStockProduct && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[500] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-100 animate-in zoom-in-95 duration-200 border border-black/10">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className="font-black text-lg text-black tracking-tight mb-1">Add Stock</h3>
+                    <p className="text-xs font-bold text-black/60">{quickAddStockProduct.name}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowQuickAddStockModal(false);
+                      setQuickAddStockProduct(null);
+                    }}
+                    className="text-black/40 hover:text-black transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-[10px] font-bold text-black uppercase tracking-wider mb-2">
+                    Quantity to Add
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full bg-white border border-black/20 focus:border-[#10B981] rounded-xl px-4 py-3 text-sm font-black text-black placeholder:text-black/30 focus:outline-none transition-colors"
+                    placeholder="Enter amount..."
+                    value={quickAddStockAmount}
+                    onChange={(e) => setQuickAddStockAmount(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowQuickAddStockModal(false);
+                      setQuickAddStockProduct(null);
+                    }}
+                    className="flex-1 py-3 bg-white border border-black/10 hover:bg-black/5 text-black rounded-xl font-bold text-xs uppercase tracking-wider transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleQuickAddStockSubmit}
+                    className="flex-1 py-3 bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-colors shadow-[0_4px_14px_rgba(16,185,129,0.3)]"
+                  >
+                    Confirm
+                  </button>
+                </div>
               </div>
             </div>
           </div>

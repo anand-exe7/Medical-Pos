@@ -9,6 +9,7 @@ export default function PWAHandler() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
     // Service worker registration
@@ -54,6 +55,20 @@ export default function PWAHandler() {
     };
   }, []);
 
+  useEffect(() => {
+    // Check if the user is authorized (logged in to the dashboard)
+    const checkAuth = () => {
+      const auth = typeof window !== "undefined" ? (sessionStorage.getItem("pos_authorized") || localStorage.getItem("pos_authorized")) : null;
+      setIsAuthorized(auth === "true");
+    };
+
+    checkAuth();
+    
+    // Poll for changes in auth state so the prompt disappears immediately upon login
+    const interval = setInterval(checkAuth, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
@@ -65,8 +80,8 @@ export default function PWAHandler() {
     setDeferredPrompt(null);
   };
 
-  // Hide on invoice pages or if already installed/not installable
-  if (isInstalled || !isInstallable || pathname?.startsWith("/invoice")) return null;
+  // Hide on invoice pages, if already installed/not installable, or if user is authorized (in dashboard)
+  if (isInstalled || !isInstallable || pathname?.startsWith("/invoice") || isAuthorized) return null;
 
   return (
     <div className="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-4 sm:bottom-4 z-50 bg-[#000000] text-white p-2.5 sm:p-4 rounded-2xl shadow-2xl border-2 border-[#DC2626] flex items-center gap-2.5 sm:gap-3 animate-in slide-in-from-bottom-5 duration-300 w-auto sm:max-w-[360px] print:hidden">

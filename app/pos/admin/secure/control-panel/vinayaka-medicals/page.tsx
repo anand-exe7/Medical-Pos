@@ -38,8 +38,8 @@ import {
   AlertTriangle,
   Pill,
 } from "lucide-react";
-import { localStore, type Product, type OrderRow } from "@/lib/localStore";
-import { verifyPasscode } from "@/app/pos/actions";
+import { verifyPasscode, fetchProducts, fetchOrders, submitOrder, removeOrder, createProduct, editProduct, removeProduct, createBatch, removeBatch } from "@/app/pos/actions";
+import { ProductWithBatches, ProductBatch, CartItem } from "@/lib/types";
 
 type CatalogItem = {
   id: string;
@@ -52,6 +52,8 @@ type CatalogItem = {
   batchNo?: string;
   manufacturer?: string;
   hsnCode?: string;
+  batches?: ProductBatch[];
+  productId?: string;
 };
 
 type OrderItem = {
@@ -60,6 +62,8 @@ type OrderItem = {
   desc: string;
   price: number;
   qty: number;
+  product_id?: string | null;
+  batch_id?: string | null;
 };
 
 type CompletedOrder = {
@@ -142,6 +146,7 @@ const SearchableItemInput = ({
         const catItem = filteredCatalog[selectedIndex];
         updateItem(item.id, "name", catItem.name);
         updateItem(item.id, "desc", catItem.desc || "");
+        updateItem(item.id, "product_id", catItem.productId || null);
         if (catItem.price !== undefined) {
           updateItem(item.id, "price", catItem.price);
         }
@@ -217,6 +222,7 @@ const SearchableItemInput = ({
                       e.preventDefault();
                       updateItem(item.id, "name", catItem.name);
                       updateItem(item.id, "desc", catItem.desc || "");
+                      updateItem(item.id, "product_id", catItem.productId || null);
                       if (catItem.price !== undefined) {
                         updateItem(item.id, "price", catItem.price);
                       }
@@ -232,6 +238,7 @@ const SearchableItemInput = ({
                       e.preventDefault();
                       updateItem(item.id, "name", catItem.name);
                       updateItem(item.id, "desc", catItem.desc || "");
+                      updateItem(item.id, "product_id", catItem.productId || null);
                       if (catItem.price !== undefined) {
                         updateItem(item.id, "price", catItem.price);
                       }
@@ -246,6 +253,7 @@ const SearchableItemInput = ({
                     onClick={() => {
                       updateItem(item.id, "name", catItem.name);
                       updateItem(item.id, "desc", catItem.desc || "");
+                      updateItem(item.id, "product_id", catItem.productId || null);
                       if (catItem.price !== undefined) {
                         updateItem(item.id, "price", catItem.price);
                       }
@@ -388,46 +396,52 @@ export default function POSBilling() {
     setIsAuthorized(false);
   };
 
-  const productToCatalogItem = (p: Product): CatalogItem => ({
-    id: p.id,
-    name: p.name,
-    desc: p.description || undefined,
-    price: p.default_price || undefined,
-    expiryDate: p.expiry_date || undefined,
-    stockQuantity:
-      typeof p.stock_quantity === "number" ? p.stock_quantity : undefined,
-    lowStockThreshold:
-      typeof p.low_stock_threshold === "number"
-        ? p.low_stock_threshold
-        : undefined,
-    batchNo: p.batch_no || undefined,
-    manufacturer: p.manufacturer || undefined,
-    hsnCode: p.hsn_code || undefined,
-  });
+  const productToCatalogItem = (p: ProductWithBatches): CatalogItem => {
+    let formattedExpiry = p.earliest_expiry || undefined;
+    if (formattedExpiry && formattedExpiry.includes("T")) {
+      const d = new Date(formattedExpiry);
+      if (!isNaN(d.getTime())) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        formattedExpiry = `${year}-${month}-${day}`;
+      }
+    }
+    const activeBatch = p.batches?.find((b: any) => b.stock_quantity > 0) || (p.batches && p.batches.length > 0 ? p.batches[0] : null);
+    
+    return {
+      id: p.id,
+      productId: p.id,
+      name: p.name,
+      desc: p.description || undefined,
+      price: p.active_selling_price || 0,
+      expiryDate: formattedExpiry,
+      stockQuantity: p.total_stock,
+      lowStockThreshold: p.low_stock_threshold,
+      batches: p.batches,
+      batchNo: activeBatch?.batch_no || undefined,
+      manufacturer: activeBatch?.manufacturer || undefined,
+      hsnCode: activeBatch?.hsn_code || undefined,
+    };
+  };
 
   const fetchData = async () => {
     setIsRefreshing(true);
     try {
-      const productsData = localStore.listProducts();
+      const [productsData, ordersData] = await Promise.all([
+        fetchProducts(),
+        fetchOrders()
+      ]);
       setCatalog(productsData.map(productToCatalogItem));
 
-      const ordersData = localStore.listOrdersWithRelations();
       setOrders(
         ordersData.map((o) => {
-          const rawPhone = o.customers?.phone || "";
-          let customDate = o.created_at;
-          if (rawPhone.includes("_DATE:")) {
-            const parts = rawPhone.split("_DATE:");
-            customDate = parts[1] || o.created_at;
-          }
-          const phoneOnly = (rawPhone.split("_DATE:")[0] || "").split("_")[0];
-
           return {
             id: o.id,
-            customerName: o.customers?.name || "Guest",
-            customerPhone: phoneOnly,
+            customerName: o.customer_name || "Guest",
+            customerPhone: o.customer_phone,
             source: o.source,
-            items: o.order_items.map((i) => ({
+            items: o.items.map((i) => ({
               id: i.id,
               name: i.snapshot_name,
               desc: i.snapshot_name === "Custom Item" ? "Custom" : "",
@@ -441,7 +455,7 @@ export default function POSBilling() {
             deliveryFee: o.delivery_fee,
             grandTotal: o.grand_total,
             cashReceived: o.cash_received,
-            date: customDate,
+            date: o.bill_date,
             status: o.status === "COMPLETED" ? "Completed" : "Pending",
           };
         }),
@@ -628,36 +642,31 @@ export default function POSBilling() {
       return;
     }
 
-    const payload = {
+    const productPayload = {
       name: newCatName.trim(),
       description: newCatDesc || null,
-      default_price: newCatPrice === "" ? 0 : Number(newCatPrice),
       category: "Medicine",
-      expiry_date: newCatExpiry,
-      stock_quantity: newCatStock === "" ? 0 : Number(newCatStock),
       low_stock_threshold: newCatThreshold === "" ? 10 : Number(newCatThreshold),
-      batch_no: newCatBatch || null,
-      manufacturer: newCatManufacturer || null,
-      hsn_code: newCatHsn || null,
     };
 
     if (editingCatalogId) {
-      const data = localStore.updateProduct(editingCatalogId, payload);
+      const data = await editProduct(editingCatalogId, productPayload);
       if (!data) {
         alert("Product not found — it may have been removed. Refresh and try again.");
         return;
       }
 
-      const mapped = productToCatalogItem(data);
       setCatalog((prev) =>
-        prev.map((c) => (c.id === editingCatalogId ? mapped : c)),
+        prev.map((c) => (c.id === editingCatalogId ? { 
+          ...c, 
+          name: data.name, 
+          desc: data.description || undefined,
+          lowStockThreshold: data.low_stock_threshold
+        } : c)),
       );
 
       if (catalogTargetRowId) {
         updateItem(catalogTargetRowId, "name", data.name);
-        if (data.default_price !== undefined) {
-          updateItem(catalogTargetRowId, "price", data.default_price || 0);
-        }
         setCatalogTargetRowId(null);
       }
 
@@ -665,14 +674,28 @@ export default function POSBilling() {
       setEditingCatalogId(null);
       setShowCatalogModal(false);
     } else {
-      const data = localStore.addProduct(payload);
-      const newItem = productToCatalogItem(data);
+      const product = await createProduct(productPayload);
+      
+      const batchPayload = {
+        batch_no: newCatBatch || null,
+        manufacturer: newCatManufacturer || null,
+        hsn_code: newCatHsn || null,
+        cost_price: newCatPrice === "" ? 0 : Number(newCatPrice),
+        selling_price: newCatPrice === "" ? 0 : Number(newCatPrice),
+        stock_quantity: newCatStock === "" ? 0 : Number(newCatStock),
+        expiry_date: newCatExpiry,
+      };
+      
+      await createBatch(product.id, batchPayload);
+
+      const data = (await fetchProducts()).find(p => p.id === product.id) || { ...product, batches: [], total_stock: batchPayload.stock_quantity, earliest_expiry: batchPayload.expiry_date, active_selling_price: batchPayload.selling_price };
+      const newItem = productToCatalogItem(data as any);
       setCatalog([...catalog, newItem]);
 
       if (catalogTargetRowId) {
         updateItem(catalogTargetRowId, "name", data.name);
-        if (data.default_price !== undefined) {
-          updateItem(catalogTargetRowId, "price", data.default_price || 0);
+        if (data.active_selling_price !== undefined) {
+          updateItem(catalogTargetRowId, "price", data.active_selling_price || 0);
         }
         setCatalogTargetRowId(null);
       }
@@ -682,8 +705,8 @@ export default function POSBilling() {
     }
   };
 
-  const deleteFromCatalog = (id: string) => {
-    localStore.deleteProduct(id);
+  const deleteFromCatalog = async (id: string) => {
+    await removeProduct(id);
     setCatalog((prev) => prev.filter((c) => c.id !== id));
   };
 
@@ -735,35 +758,6 @@ export default function POSBilling() {
       return;
     }
 
-    const currentYear = new Date().getFullYear();
-    let newOrderId = "";
-    let isUnique = false;
-    let attempts = 0;
-
-    while (!isUnique && attempts < 20) {
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-      let randStr = "";
-      for (let i = 0; i < 5; i++) {
-        randStr += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      const tempId = `INV-${currentYear}-${randStr}`;
-      const existsLocally = orders.some((o) => o.id === tempId);
-      if (!existsLocally && !localStore.orderIdExists(tempId)) {
-        newOrderId = tempId;
-        isUnique = true;
-      }
-      attempts++;
-    }
-
-    if (!newOrderId) {
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-      let randStr = "";
-      for (let i = 0; i < 5; i++) {
-        randStr += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      newOrderId = `INV-${currentYear}-${randStr}`;
-    }
-
     const currentTimeStr = new Date().toTimeString().split(" ")[0];
     let orderTimestamp = new Date().toISOString();
     if (customOrderDate) {
@@ -773,53 +767,39 @@ export default function POSBilling() {
       }
     }
 
-    // Encode custom order date in the stored phone so we can display it on the invoice later.
-    const dbPhone = `${customerPhone}_${customerName || "Guest"}_${Date.now()}_DATE:${orderTimestamp}`;
-    const custData = localStore.upsertCustomerByPhone(
-      customerName || "Guest",
-      dbPhone,
-    );
-
-    const dbItems: Array<{
-      order_id: string;
-      snapshot_name: string;
-      snapshot_price: number;
-      quantity: number;
-    }> = itemsToSave.map((i) => ({
-      order_id: newOrderId,
-      snapshot_name: i.name,
-      snapshot_price: i.price,
-      quantity: i.qty,
-    }));
-
-    if (applyGST && localGstAmount > 0) {
-      dbItems.push({
-        order_id: newOrderId,
-        snapshot_name: `GST (${gstPercentage}%)`,
-        snapshot_price: localGstAmount,
-        quantity: 1,
-      });
-    }
-
-    const orderRow: OrderRow = {
-      id: newOrderId,
-      customer_id: custData.id,
+    const { orderId: newOrderId } = await submitOrder({
+      orderId: `INV-${new Date().getFullYear()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+      customerName: customerName || "Guest",
+      customerPhone: customerPhone,
       source: isOnline ? "ONLINE" : "OFFLINE",
-      status: "COMPLETED",
-      subtotal: localSubtotal,
-      discount_type: discountType === "percent" ? "PERCENT" : "FIXED",
-      discount_value: discountValue,
-      discount_amount: localCalculatedDiscount,
-      delivery_fee: deliveryFee,
-      grand_total: localGrandTotal,
-      cash_received: cashReceived,
-      created_at: new Date().toISOString(),
-    };
-    localStore.addOrder(orderRow, dbItems);
-    localStore.decrementStock(
-      itemsToSave.map((i) => ({ snapshot_name: i.name, quantity: i.qty })),
-    );
-    setCatalog(localStore.listProducts().map(productToCatalogItem));
+      billDate: orderTimestamp,
+      items: itemsToSave.map(i => ({
+        id: i.id,
+        product_id: i.product_id || null,
+        batch_id: i.batch_id || null,
+        name: i.name,
+        desc: i.desc,
+        price: i.price,
+        qty: i.qty
+      })),
+      discountType: discountType === "percent" ? "PERCENT" : "FIXED",
+      discountValue: discountValue,
+      discountAmount: localCalculatedDiscount,
+      gstPercentage: applyGST ? gstPercentage : 0,
+      gstAmount: localGstAmount,
+      deliveryFee: deliveryFee,
+      grandTotal: localGrandTotal,
+      cashReceived: cashReceived,
+    });
+
+    const [productsData, ordersData] = await Promise.all([
+      fetchProducts(),
+      fetchOrders()
+    ]);
+    setCatalog(productsData.map(productToCatalogItem));
+    
+    // Instead of building a newOrder manually, we find it from the fetched data
+    const createdOrder = ordersData.find(o => o.id === newOrderId);
 
     const domain = window.location.origin;
     const invoiceUrl = `${domain}/invoice/${newOrderId}`;
@@ -868,27 +848,33 @@ export default function POSBilling() {
       });
     }
 
-    const newOrder: CompletedOrder = {
-      id: newOrderId,
-      customerName: customerName || "Guest",
-      customerPhone,
-      source: isOnline ? "ONLINE" : "OFFLINE",
-      items: [
-        ...itemsToSave,
-        ...(applyGST && gstAmount > 0 ? [{ id: Math.random().toString(), name: `GST (${gstPercentage}%)`, desc: "", price: gstAmount, qty: 1 }] : [])
-      ],
-      subtotal,
-      discount: calculatedDiscount,
-      discountType: discountType === "percent" ? "PERCENT" : "FIXED",
-      discountValue: discountValue,
-      deliveryFee,
-      grandTotal,
-      cashReceived,
-      date: orderTimestamp,
-      status: "Completed",
-    };
-
-    setOrders((prev) => [newOrder, ...prev]);
+    if (createdOrder) {
+      const mappedOrder = {
+        id: createdOrder.id,
+        customerName: createdOrder.customer_name || "Guest",
+        customerPhone: createdOrder.customer_phone,
+        source: createdOrder.source,
+        items: createdOrder.items.map((i) => ({
+          id: i.id,
+          name: i.snapshot_name,
+          desc: i.snapshot_name === "Custom Item" ? "Custom" : "",
+          price: i.snapshot_price,
+          qty: i.quantity,
+        })),
+        subtotal: createdOrder.subtotal,
+        discount: createdOrder.discount_amount,
+        discountType: createdOrder.discount_type,
+        discountValue: createdOrder.discount_value,
+        deliveryFee: createdOrder.delivery_fee,
+        grandTotal: createdOrder.grand_total,
+        cashReceived: createdOrder.cash_received,
+        date: createdOrder.bill_date,
+        status: (createdOrder.status === "COMPLETED" ? "Completed" : "Pending") as "Completed" | "Pending",
+      };
+      
+      setOrders((prev) => [mappedOrder, ...prev]);
+      setCompletedBillData(mappedOrder as any);
+    }
 
     // Reset Form
     setCustomerName("");
@@ -901,8 +887,6 @@ export default function POSBilling() {
     setApplyGST(false);
     setGstPercentage(18);
 
-    // Trigger Bill Generated Success View
-    setCompletedBillData(newOrder);
   };
 
   const resendWhatsApp = (order: CompletedOrder) => {
@@ -950,9 +934,9 @@ export default function POSBilling() {
     }
   };
 
-  const handleDeleteOrder = (orderId: string) => {
+  const handleDeleteOrder = async (orderId: string) => {
     if (!window.confirm("Are you sure you want to delete this invoice? This action cannot be undone.")) return;
-    localStore.deleteOrder(orderId);
+    await removeOrder(orderId);
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
     if (selectedOrder?.id === orderId) setSelectedOrder(null);
     if (completedBillData?.id === orderId) setCompletedBillData(null);

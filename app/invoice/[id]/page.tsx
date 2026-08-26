@@ -1,50 +1,15 @@
-"use client";
-
-import { useEffect, useState, use } from "react";
-import { localStore } from "@/lib/localStore";
+import { dbStore } from "@/lib/dbStore";
 import { ShoppingBag, MapPin, Phone, Printer, Copy, Check } from "lucide-react";
 import Link from "next/link";
 
-export default function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const [order, setOrder] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [copied, setCopied] = useState(false);
+// Using a Client Component for the buttons inside a Server Component wrapper
+import { InvoiceActions } from "./InvoiceActions";
 
-  const handleCopyLink = () => {
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const order = await dbStore.getOrderWithRelations(id);
 
-  useEffect(() => {
-    const data = localStore.getOrderWithRelations(id);
-    if (!data) {
-      setError(true);
-    } else {
-      setOrder(data);
-      document.title = `Invoice - ${data.id}`;
-    }
-    setLoading(false);
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-[#DC2626] rounded-full flex items-center justify-center">
-            <ShoppingBag className="w-6 h-6 text-white" />
-          </div>
-          <p className="text-[#DC2626] font-bold tracking-widest uppercase text-sm">Generating Digital Bill...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !order) {
+  if (!order) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
         <p className="text-[#DC2626] font-bold text-xl">Invoice Not Found</p>
@@ -54,10 +19,6 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
       </div>
     );
   }
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-[#000000] font-sans py-12 px-4 print:p-0 print:bg-white flex flex-col items-center">
@@ -77,28 +38,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
       
       {/* Top Navigation / Action Bar (Hidden when printing) */}
       <div className="w-full max-w-3xl flex justify-end items-center mb-8 print:hidden gap-4">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={handleCopyLink}
-            className="flex items-center gap-2 bg-white hover:bg-[#FAFAFA] text-[#7F1D1D] hover:text-[#DC2626] font-bold text-xs uppercase tracking-wider px-4 py-2 rounded-lg shadow-sm border border-[#DC2626]/30 transition-colors cursor-pointer"
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4 text-green-600" /> Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4" /> Copy Link
-              </>
-            )}
-          </button>
-          <button 
-            onClick={handlePrint}
-            className="flex items-center gap-2 bg-gradient-to-r from-[#DC2626] via-[#DC2626] to-[#DC2626] hover:brightness-105 text-white font-bold text-xs uppercase tracking-wider px-5 py-2 rounded-lg shadow-md transition-all cursor-pointer"
-          >
-            <Printer className="w-4 h-4" /> Download PDF / Print
-          </button>
-        </div>
+        <InvoiceActions />
       </div>
 
       {/* The Invoice Document */}
@@ -132,9 +72,9 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 p-8 sm:p-12 print:p-6 border-b border-[#e5e5e5]/50">
           <div>
             <h3 className="text-[10px] font-bold text-[#666666] uppercase tracking-[0.2em] mb-3">Billed To</h3>
-            <p className="text-base font-bold text-[#DC2626]">{order.customers?.name || "Guest Customer"}</p>
-            {order.customers?.phone && (
-              <p className="text-sm text-[#555555] font-semibold mt-1">+91 {order.customers.phone.split("_")[0]}</p>
+            <p className="text-base font-bold text-[#DC2626]">{order.customer_name || "Guest Customer"}</p>
+            {order.customer_phone && (
+              <p className="text-sm text-[#555555] font-semibold mt-1">+91 {order.customer_phone}</p>
             )}
           </div>
           <div className="sm:text-right flex flex-col sm:items-end">
@@ -142,7 +82,7 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
             <div className="inline-block text-left text-sm space-y-1">
               <div className="flex gap-2">
                 <span className="text-[#666666] font-bold w-12 text-left sm:text-right">Date:</span>
-                <span className="text-[#000000] font-black">{new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span className="text-[#000000] font-black">{new Date(order.bill_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
               </div>
               <div className="flex gap-2">
                 <span className="text-[#666666] font-bold w-12 text-left sm:text-right">Time:</span>
@@ -169,14 +109,14 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e5e5e5]/40">
-                {order.order_items.map((item: any, index: number) => (
+                {order.items.map((item, index: number) => (
                   <tr key={index} className="group">
                     <td className="py-6 pr-4 print:py-3">
                       <p className="text-sm font-bold text-[#DC2626]">{item.snapshot_name}</p>
                     </td>
                     <td className="py-6 px-4 print:py-3 text-center text-sm font-bold text-[#000000]">{item.quantity}</td>
-                    <td className="py-6 pl-4 print:py-3 text-right text-sm font-bold text-[#000000]">₹{item.snapshot_price.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                    <td className="py-6 pl-4 print:py-3 text-right text-sm font-black text-[#DC2626]">₹{(item.snapshot_price * item.quantity).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td className="py-6 pl-4 print:py-3 text-right text-sm font-bold text-[#000000]">₹{Number(item.snapshot_price).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td className="py-6 pl-4 print:py-3 text-right text-sm font-black text-[#DC2626]">₹{(Number(item.snapshot_price) * item.quantity).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                   </tr>
                 ))}
               </tbody>
@@ -189,33 +129,42 @@ export default function InvoicePage({ params }: { params: Promise<{ id: string }
 
             {/* Calculations */}
             <div className="w-full sm:w-1/2 space-y-3">
-              {(order.discount_amount > 0 || order.delivery_fee > 0) && (
+              {(Number(order.discount_amount) > 0 || Number(order.delivery_fee) > 0 || Number(order.gst_amount) > 0) && (
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-[#666666] font-bold uppercase tracking-wider">Subtotal</span>
-                  <span className="font-bold text-[#000000]">₹{order.subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  <span className="font-bold text-[#000000]">₹{Number(order.subtotal).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                 </div>
               )}
               
-              {order.discount_amount > 0 && (
+              {Number(order.discount_amount) > 0 && (
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-[#666666] font-bold uppercase tracking-wider">
                     Discount {order.discount_type === 'PERCENT' ? `(${order.discount_value}%)` : ''}
                   </span>
-                  <span className="font-bold text-[#E11D48]">-₹{order.discount_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  <span className="font-bold text-[#E11D48]">-₹{Number(order.discount_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                 </div>
               )}
 
-              {order.delivery_fee > 0 && (
+              {Number(order.gst_amount) > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-[#666666] font-bold uppercase tracking-wider">
+                    GST ({order.gst_percentage}%)
+                  </span>
+                  <span className="font-bold text-[#000000]">₹{Number(order.gst_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                </div>
+              )}
+
+              {Number(order.delivery_fee) > 0 && (
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-[#666666] font-bold uppercase tracking-wider">Delivery Fee</span>
-                  <span className="font-bold text-[#000000]">₹{order.delivery_fee.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  <span className="font-bold text-[#000000]">₹{Number(order.delivery_fee).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                 </div>
               )}
 
               <div className="border-t border-[#DC2626]/30 pt-4 mt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-2">
                 <span className="text-sm font-black text-[#DC2626] uppercase tracking-widest shrink-0">Total Amount</span>
                 <span className="text-3xl font-black text-[#DC2626] self-end sm:self-auto leading-none mt-1 sm:mt-0">
-                  ₹{order.grand_total.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                  ₹{Number(order.grand_total).toLocaleString(undefined, {minimumFractionDigits: 2})}
                 </span>
               </div>
             </div>

@@ -3,6 +3,7 @@ export type Product = {
   name: string;
   description: string | null;
   category: string;
+  schedule_category: 'NONE' | 'H' | 'H1';
   low_stock_threshold: number;
   created_at: string;
 };
@@ -16,6 +17,7 @@ export type ProductBatch = {
   cost_price: number;
   selling_price: number;
   stock_quantity: number;
+  mfg_date: string | null;
   expiry_date: string;
   arrived_at: string;
 };

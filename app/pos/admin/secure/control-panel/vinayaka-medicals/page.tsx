@@ -38,7 +38,7 @@ import {
   AlertTriangle,
   Pill,
 } from "lucide-react";
-import { verifyPasscode, fetchProducts, fetchOrders, submitOrder, removeOrder, createProduct, editProduct, removeProduct, createBatch, removeBatch } from "@/app/pos/actions";
+import { verifyPasscode, fetchProducts, fetchOrders, submitOrder, removeOrder, createProduct, editProduct, removeProduct, createBatch, removeBatch, editBatch } from "@/app/pos/actions";
 import { ProductWithBatches, ProductBatch, CartItem } from "@/lib/types";
 
 type CatalogItem = {
@@ -46,7 +46,9 @@ type CatalogItem = {
   name: string;
   desc?: string;
   price?: number;
+  mfgDate?: string;
   expiryDate?: string;
+  scheduleCategory?: 'NONE' | 'H' | 'H1';
   stockQuantity?: number;
   lowStockThreshold?: number;
   batchNo?: string;
@@ -428,7 +430,9 @@ export default function POSBilling() {
       name: p.name,
       desc: p.description || undefined,
       price: p.active_selling_price || 0,
+      mfgDate: activeBatch?.mfg_date || undefined,
       expiryDate: formattedExpiry,
+      scheduleCategory: p.schedule_category,
       stockQuantity: p.total_stock,
       lowStockThreshold: p.low_stock_threshold,
       batches: p.batches,
@@ -491,6 +495,7 @@ export default function POSBilling() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [editingCatalogId, setEditingCatalogId] = useState<string | null>(null);
+  const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<CompletedOrder | null>(
     null,
   );
@@ -499,12 +504,15 @@ export default function POSBilling() {
   const [newCatPrice, setNewCatPrice] = useState<number | "">("");
   const [newCatCostPrice, setNewCatCostPrice] = useState<number | "">("");
   const [newCatExpiry, setNewCatExpiry] = useState<string>("");
+  const [newCatMfgDate, setNewCatMfgDate] = useState<string>("");
+  const [newCatSchedule, setNewCatSchedule] = useState<'NONE' | 'H' | 'H1'>('NONE');
   const [newCatStock, setNewCatStock] = useState<number | "">("");
   const [newCatThreshold, setNewCatThreshold] = useState<number | "">(10);
   const [newCatBatch, setNewCatBatch] = useState<string>("");
   const [newCatManufacturer, setNewCatManufacturer] = useState<string>("");
   const [newCatHsn, setNewCatHsn] = useState<string>("");
   const [inventorySearch, setInventorySearch] = useState<string>("");
+  const [scheduleFilter, setScheduleFilter] = useState<'ALL' | 'H' | 'H1'>('ALL');
   const [alertedIds, setAlertedIds] = useState<Set<string>>(new Set());
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [showBatchModal, setShowBatchModal] = useState<boolean>(false);
@@ -634,11 +642,14 @@ export default function POSBilling() {
   };
 
   const resetCatalogForm = () => {
+    setEditingBatchId(null);
     setNewCatName("");
     setNewCatDesc("");
     setNewCatPrice("");
     setNewCatCostPrice("");
     setNewCatExpiry("");
+    setNewCatMfgDate("");
+    setNewCatSchedule('NONE');
     setNewCatStock("");
     setNewCatThreshold(10);
     setNewCatBatch("");
@@ -652,6 +663,7 @@ export default function POSBilling() {
     setNewCatDesc(catItem.desc || "");
     setNewCatPrice(catItem.price ?? "");
     setNewCatExpiry(catItem.expiryDate || "");
+    setNewCatSchedule((catItem as any).scheduleCategory || 'NONE');
     setNewCatStock(
       typeof catItem.stockQuantity === "number" ? catItem.stockQuantity : "",
     );
@@ -663,6 +675,24 @@ export default function POSBilling() {
     setNewCatBatch(catItem.batchNo || "");
     setNewCatManufacturer(catItem.manufacturer || "");
     setNewCatHsn(catItem.hsnCode || "");
+    
+    // Set active batch details
+    const activeBatch = catItem.batches?.find(b => b.stock_quantity > 0) || (catItem.batches && catItem.batches.length > 0 ? catItem.batches[0] : null);
+    setEditingBatchId(activeBatch ? activeBatch.id : null);
+    if (activeBatch) {
+      setNewCatCostPrice(activeBatch.cost_price || "");
+      if (activeBatch.mfg_date) {
+        let mDate = activeBatch.mfg_date;
+        if (mDate.includes("T")) mDate = mDate.split("T")[0];
+        setNewCatMfgDate(mDate);
+      } else {
+        setNewCatMfgDate("");
+      }
+    } else {
+      setNewCatCostPrice("");
+      setNewCatMfgDate("");
+    }
+    
     setCatalogTargetRowId(targetRowId || null);
     setShowCatalogModal(true);
   };
@@ -688,6 +718,7 @@ export default function POSBilling() {
       name: newCatName.trim(),
       description: newCatDesc || null,
       category: "Medicine",
+      schedule_category: newCatSchedule,
       low_stock_threshold: newCatThreshold === "" ? 10 : Number(newCatThreshold),
     };
 
@@ -698,14 +729,32 @@ export default function POSBilling() {
         return;
       }
 
-      setCatalog((prev) =>
-        prev.map((c) => (c.id === editingCatalogId ? { 
-          ...c, 
-          name: data.name, 
-          desc: data.description || undefined,
-          lowStockThreshold: data.low_stock_threshold
-        } : c)),
-      );
+      if (editingBatchId) {
+        await editBatch(editingBatchId, {
+          batch_no: newCatBatch || null,
+          manufacturer: newCatManufacturer || null,
+          hsn_code: newCatHsn || null,
+          cost_price: newCatCostPrice === "" ? 0 : Number(newCatCostPrice),
+          selling_price: newCatPrice === "" ? 0 : Number(newCatPrice),
+          stock_quantity: newCatStock === "" ? 0 : Number(newCatStock),
+          mfg_date: newCatMfgDate || null,
+          expiry_date: newCatExpiry,
+        });
+        
+        // Refresh catalog to reflect batch changes
+        const updatedProducts = await fetchProducts();
+        setCatalog(updatedProducts.map(productToCatalogItem));
+      } else {
+        setCatalog((prev) =>
+          prev.map((c) => (c.id === editingCatalogId ? { 
+            ...c, 
+            name: data.name, 
+            desc: data.description || undefined,
+            lowStockThreshold: data.low_stock_threshold,
+            scheduleCategory: data.schedule_category
+          } : c)),
+        );
+      }
 
       if (catalogTargetRowId) {
         updateItem(catalogTargetRowId, "name", data.name);
@@ -725,6 +774,7 @@ export default function POSBilling() {
         cost_price: newCatCostPrice === "" ? 0 : Number(newCatCostPrice),
         selling_price: newCatPrice === "" ? 0 : Number(newCatPrice),
         stock_quantity: newCatStock === "" ? 0 : Number(newCatStock),
+        mfg_date: newCatMfgDate || null,
         expiry_date: newCatExpiry,
       };
       
@@ -757,6 +807,7 @@ export default function POSBilling() {
         cost_price: newCatCostPrice === "" ? 0 : Number(newCatCostPrice),
         selling_price: newCatPrice === "" ? 0 : Number(newCatPrice),
         stock_quantity: newCatStock === "" ? 0 : Number(newCatStock),
+        mfg_date: newCatMfgDate || null,
         expiry_date: newCatExpiry || "",
       };
       await createBatch(batchTargetProductId, batchPayload);
@@ -1299,11 +1350,18 @@ export default function POSBilling() {
     const stock = typeof c.stockQuantity === "number" ? c.stockQuantity : 0;
     const isLow = stock <= threshold;
     const days = daysUntil(c.expiryDate);
-    const isExpiringSoon = days !== null && days <= 30;
+    const isExpiringSoon = days !== null && days <= 90;
     return isLow || isExpiringSoon;
   });
 
   const filteredInventory = inventoryProducts.filter((p) => {
+    // 1. Check schedule filter first
+    const itemSchedule = (p as any).scheduleCategory || 'NONE';
+    if (scheduleFilter !== 'ALL' && itemSchedule !== scheduleFilter) {
+      return false;
+    }
+
+    // 2. Check search text
     if (!inventorySearch.trim()) return true;
     const q = inventorySearch.toLowerCase();
     return (
@@ -1747,6 +1805,35 @@ export default function POSBilling() {
 
                 <div>
                   <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Schedule Category
+                  </label>
+                  <select
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-bold text-black focus:outline-none transition-colors shadow-xs appearance-none cursor-pointer"
+                    value={newCatSchedule}
+                    onChange={(e) => setNewCatSchedule(e.target.value as any)}
+                  >
+                    <option value="NONE">General (None)</option>
+                    <option value="H">Schedule H</option>
+                    <option value="H1">Schedule H1</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Mfg Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors cursor-pointer shadow-xs"
+                    value={newCatMfgDate}
+                    onChange={(e) => setNewCatMfgDate(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
                     Expiry Date <span className="text-[#DC2626]">*</span>
                   </label>
                   <input
@@ -1940,18 +2027,31 @@ export default function POSBilling() {
                 </div>
               </div>
 
-              {/* Row 3: Expiry Date */}
-              <div>
-                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
-                  Expiry Date <span className="text-[#DC2626]">*</span>
-                </label>
-                <input
-                  type="date"
-                  className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors cursor-pointer shadow-xs"
-                  value={newCatExpiry}
-                  onChange={(e) => setNewCatExpiry(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                />
+              {/* Row 3: Mfg & Expiry Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Mfg Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors cursor-pointer shadow-xs"
+                    value={newCatMfgDate}
+                    onChange={(e) => setNewCatMfgDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">
+                    Expiry Date <span className="text-[#DC2626]">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#DC2626] rounded-lg px-3.5 py-2.5 text-sm font-semibold text-black focus:outline-none transition-colors cursor-pointer shadow-xs"
+                    value={newCatExpiry}
+                    onChange={(e) => setNewCatExpiry(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
               </div>
 
               {/* Submit Button */}
@@ -4362,12 +4462,32 @@ export default function POSBilling() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                <div className="flex bg-gray-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => setScheduleFilter('ALL')}
+                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${scheduleFilter === 'ALL' ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setScheduleFilter('H')}
+                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${scheduleFilter === 'H' ? 'bg-white shadow-sm text-red-600' : 'text-gray-500 hover:text-black'}`}
+                  >
+                    Sch-H
+                  </button>
+                  <button
+                    onClick={() => setScheduleFilter('H1')}
+                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors ${scheduleFilter === 'H1' ? 'bg-white shadow-sm text-purple-600' : 'text-gray-500 hover:text-black'}`}
+                  >
+                    Sch-H1
+                  </button>
+                </div>
                 <div className="relative flex-1 lg:flex-none">
                   <Search className="w-3.5 h-3.5 text-[#000000]/40 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Search products…"
-                    className="pl-9 pr-3 py-2 bg-white border border-black/10 rounded-lg text-xs font-semibold focus:outline-none focus:border-[#DC2626] w-full lg:w-64"
+                    className="pl-9 pr-3 py-2 bg-white border border-black/10 rounded-lg text-xs font-semibold focus:outline-none focus:border-[#DC2626] w-full lg:w-48"
                     value={inventorySearch}
                     onChange={(e) => setInventorySearch(e.target.value)}
                   />
@@ -4420,6 +4540,7 @@ export default function POSBilling() {
                     <thead className="bg-[#FAFAFA] border-b border-black/10">
                       <tr>
                         <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider">Product</th>
+                        <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Schedule</th>
                         <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-right">Price</th>
                         <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Stock</th>
                         <th className="p-3 text-[10px] font-black text-[#000000] uppercase tracking-wider text-center">Expiry</th>
@@ -4434,8 +4555,9 @@ export default function POSBilling() {
                         const days = daysUntil(p.expiryDate);
                         const isLow = stock <= threshold;
                         const isExpired = days !== null && days < 0;
-                        const isExpiringSoon = days !== null && days >= 0 && days <= 30;
+                        const isExpiringSoon = days !== null && days >= 0 && days <= 90;
                         const isExpanded = expandedProductId === p.id;
+                        const sch = p.scheduleCategory || 'NONE';
                         return (
                           <React.Fragment key={p.id}>
                           <tr 
@@ -4456,6 +4578,19 @@ export default function POSBilling() {
                               )}
                               {p.hsnCode && (
                                 <div className="text-[9px] font-bold text-[#000000]/40 mt-0.5 uppercase tracking-wider">HSN {p.hsnCode}</div>
+                              )}
+                            </td>
+                            <td className="p-3 text-center">
+                              {sch === 'H' ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-red-700 bg-red-100 px-2 py-1 rounded">
+                                  H
+                                </span>
+                              ) : sch === 'H1' ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100 px-2 py-1 rounded">
+                                  H1
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-[#000000]/40">—</span>
                               )}
                             </td>
                             <td className="p-3 text-right text-sm font-black text-[#000000]">
@@ -4506,7 +4641,7 @@ export default function POSBilling() {
                           </tr>
                           {isExpanded && (
                             <tr className="bg-[#FAFAFA] border-b border-black/5">
-                              <td colSpan={6} className="p-4">
+                              <td colSpan={7} className="p-4">
                                 <div className="bg-white border border-black/10 rounded-lg p-3 shadow-sm">
                                   <div className="flex items-center justify-between mb-2">
                                     <h4 className="text-[10px] font-bold text-black uppercase tracking-wider">Batch Details</h4>
@@ -4526,6 +4661,7 @@ export default function POSBilling() {
                                       <tr className="border-b border-black/5 text-[#000000]/60">
                                         <th className="py-1.5 font-semibold">Batch No</th>
                                         <th className="py-1.5 font-semibold">Arrived At</th>
+                                        <th className="py-1.5 font-semibold">Mfg Date</th>
                                         <th className="py-1.5 font-semibold">Expiry Date</th>
                                         <th className="py-1.5 font-semibold">Cost Price</th>
                                         <th className="py-1.5 font-semibold">Selling Price</th>
@@ -4546,6 +4682,7 @@ export default function POSBilling() {
                                           <tr key={b.id} className="border-b border-black/5 last:border-0">
                                             <td className="py-1.5 font-bold">{b.batch_no || "—"}</td>
                                             <td className="py-1.5">{batchArrival || "—"}</td>
+                                            <td className="py-1.5">{b.mfg_date || "—"}</td>
                                             <td className="py-1.5">{batchExpiry || "—"}</td>
                                             <td className="py-1.5">₹{Number(b.cost_price).toLocaleString()}</td>
                                             <td className="py-1.5">₹{Number(b.selling_price).toLocaleString()}</td>
@@ -4556,7 +4693,7 @@ export default function POSBilling() {
                                         );
                                       }) : (
                                         <tr>
-                                          <td colSpan={6} className="py-3 text-center text-[10px] font-semibold text-black/40">No batches available.</td>
+                                          <td colSpan={7} className="py-3 text-center text-[10px] font-semibold text-black/40">No batches available.</td>
                                         </tr>
                                       )}
                                     </tbody>

@@ -30,7 +30,7 @@ export async function fetchProducts(): Promise<ProductWithBatches[]> {
   return serialize(await dbStore.listProductsWithBatches());
 }
 
-export async function createProduct(data: { name: string; description: string | null; category: string; low_stock_threshold: number }): Promise<Product> {
+export async function createProduct(data: { name: string; description: string | null; category: string; schedule_category: 'NONE' | 'H' | 'H1'; low_stock_threshold: number }): Promise<Product> {
   return serialize(await dbStore.addProduct(data));
 }
 
@@ -51,8 +51,7 @@ export async function createBatch(productId: string, data: Omit<ProductBatch, 'i
 }
 
 export async function editBatch(id: string, data: Partial<ProductBatch>): Promise<ProductBatch | null> {
-  // We didn't implement editBatch in dbStore for brevity since not fully requested in plan, but let's add a simple one if needed or just skip.
-  throw new Error("Not implemented in dbStore yet");
+  return serialize(await dbStore.updateBatch(id, data));
 }
 
 export async function removeBatch(id: string): Promise<void> {

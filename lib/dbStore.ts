@@ -99,11 +99,11 @@ export const dbStore = {
     });
   },
 
-  async addProduct(input: { name: string; description: string | null; category: string; low_stock_threshold: number }): Promise<Product> {
+  async addProduct(input: { name: string; description: string | null; category: string; schedule_category: 'NONE' | 'H' | 'H1'; low_stock_threshold: number }): Promise<Product> {
     const id = uid();
     const rows = await sql`
-      INSERT INTO products (id, name, description, category, low_stock_threshold)
-      VALUES (${id}, ${input.name}, ${input.description}, ${input.category}, ${input.low_stock_threshold})
+      INSERT INTO products (id, name, description, category, schedule_category, low_stock_threshold)
+      VALUES (${id}, ${input.name}, ${input.description}, ${input.category}, ${input.schedule_category}, ${input.low_stock_threshold})
       RETURNING *
     `;
     return rows[0] as Product;
@@ -116,6 +116,7 @@ export const dbStore = {
     if (patch.name !== undefined) await sql`UPDATE products SET name = ${patch.name} WHERE id = ${id}`;
     if (patch.description !== undefined) await sql`UPDATE products SET description = ${patch.description} WHERE id = ${id}`;
     if (patch.category !== undefined) await sql`UPDATE products SET category = ${patch.category} WHERE id = ${id}`;
+    if (patch.schedule_category !== undefined) await sql`UPDATE products SET schedule_category = ${patch.schedule_category} WHERE id = ${id}`;
     if (patch.low_stock_threshold !== undefined) await sql`UPDATE products SET low_stock_threshold = ${patch.low_stock_threshold} WHERE id = ${id}`;
 
     const rows = await sql`SELECT * FROM products WHERE id = ${id}`;
@@ -135,19 +136,36 @@ export const dbStore = {
     cost_price: number;
     selling_price: number;
     stock_quantity: number;
+    mfg_date: string | null;
     expiry_date: string;
   }): Promise<ProductBatch> {
     const id = uid();
     const rows = await sql`
       INSERT INTO product_batches (
-        id, product_id, batch_no, manufacturer, hsn_code, cost_price, selling_price, stock_quantity, expiry_date
+        id, product_id, batch_no, manufacturer, hsn_code, cost_price, selling_price, stock_quantity, mfg_date, expiry_date
       ) VALUES (
         ${id}, ${input.product_id}, ${input.batch_no}, ${input.manufacturer}, ${input.hsn_code},
-        ${input.cost_price}, ${input.selling_price}, ${input.stock_quantity}, ${input.expiry_date}
+        ${input.cost_price}, ${input.selling_price}, ${input.stock_quantity}, ${input.mfg_date}, ${input.expiry_date}
       )
       RETURNING *
     `;
     return rows[0] as ProductBatch;
+  },
+
+  async updateBatch(id: string, patch: Partial<ProductBatch>): Promise<ProductBatch | null> {
+    if (Object.keys(patch).length === 0) return null;
+    
+    if (patch.batch_no !== undefined) await sql`UPDATE product_batches SET batch_no = ${patch.batch_no} WHERE id = ${id}`;
+    if (patch.manufacturer !== undefined) await sql`UPDATE product_batches SET manufacturer = ${patch.manufacturer} WHERE id = ${id}`;
+    if (patch.hsn_code !== undefined) await sql`UPDATE product_batches SET hsn_code = ${patch.hsn_code} WHERE id = ${id}`;
+    if (patch.cost_price !== undefined) await sql`UPDATE product_batches SET cost_price = ${patch.cost_price} WHERE id = ${id}`;
+    if (patch.selling_price !== undefined) await sql`UPDATE product_batches SET selling_price = ${patch.selling_price} WHERE id = ${id}`;
+    if (patch.stock_quantity !== undefined) await sql`UPDATE product_batches SET stock_quantity = ${patch.stock_quantity} WHERE id = ${id}`;
+    if (patch.mfg_date !== undefined) await sql`UPDATE product_batches SET mfg_date = ${patch.mfg_date} WHERE id = ${id}`;
+    if (patch.expiry_date !== undefined) await sql`UPDATE product_batches SET expiry_date = ${patch.expiry_date} WHERE id = ${id}`;
+
+    const rows = await sql`SELECT * FROM product_batches WHERE id = ${id}`;
+    return rows.length > 0 ? (rows[0] as ProductBatch) : null;
   },
 
   async deleteBatch(id: string): Promise<void> {

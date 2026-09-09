@@ -2,6 +2,8 @@
 
 A PWA-enabled Point of Sale (POS), billing, and inventory management system built for **VINAYAKA MEDICALS**, Anaimalai. It handles quick invoice generation, WhatsApp delivery of digital receipts, order history, and full medical inventory (with expiry-date and low-stock alerts).
 
+All done final push need to deploy in the vercel so adding readme am lowkey doing this 
+
 ## Features
 
 ### 🧾 POS Billing Panel

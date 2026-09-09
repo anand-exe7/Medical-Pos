@@ -37,6 +37,8 @@ import {
   Boxes,
   AlertTriangle,
   Pill,
+  Check,
+  PackageX,
 } from "lucide-react";
 import {
   verifyPasscode,
@@ -94,6 +96,7 @@ type CompletedOrder = {
   grandTotal: number;
   cashReceived: number;
   date: string;
+  createdAt: string;
   status: "Completed" | "Pending";
 };
 
@@ -517,6 +520,7 @@ export default function POSBilling() {
             grandTotal: Number(o.grand_total) || 0,
             cashReceived: Number(o.cash_received) || 0,
             date: o.bill_date,
+            createdAt: o.created_at,
             status: o.status === "COMPLETED" ? "Completed" : "Pending",
           };
         }),
@@ -954,14 +958,15 @@ export default function POSBilling() {
   const grandTotal =
     Math.max(0, subtotal - calculatedDiscount) + deliveryFee + gstAmount;
 
-  const handleSendWhatsApp = async (
-    appType: "personal" | "business" = "personal",
-  ) => {
+  // Completes and saves the sale to the database. Returns the created order
+  // (or null if validation/creation failed). WhatsApp sharing is a separate,
+  // optional step that runs only after the sale is safely saved.
+  const completeSale = async (): Promise<CompletedOrder | null> => {
     if (!customerPhone || customerPhone.length !== 10) {
       alert(
-        "Please enter a valid 10-digit mobile contact number to send the bill.",
+        "Please enter a valid 10-digit mobile contact number to complete the sale.",
       );
-      return;
+      return null;
     }
 
     // Strict validation: every single row must have a name and a price > 0
@@ -977,7 +982,7 @@ export default function POSBilling() {
       alert(
         "Please ensure all items have a valid name and a price greater than 0. Remove any empty rows before proceeding.",
       );
-      return;
+      return null;
     }
     const itemsToSave = items;
 
@@ -1009,7 +1014,7 @@ export default function POSBilling() {
       alert(
         "The order totals exceed the maximum allowable system limit of ₹99,999,999.99. Please adjust the item prices, delivery fee, or cash received.",
       );
-      return;
+      return null;
     }
 
     // Validate individual item prices
@@ -1020,7 +1025,7 @@ export default function POSBilling() {
       alert(
         "One or more item prices exceed the maximum system limit of ₹99,999,999.99. Please correct the item prices.",
       );
-      return;
+      return null;
     }
 
     const currentTimeStr = new Date().toTimeString().split(" ")[0];
@@ -1066,55 +1071,14 @@ export default function POSBilling() {
     // Instead of building a newOrder manually, we find it from the fetched data
     const createdOrder = ordersData.find((o) => o.id === newOrderId);
 
-    const domain = window.location.origin;
-    const invoiceUrl = `${domain}/invoice/${newOrderId}`;
-
-    const shopEmoji = String.fromCodePoint(0x2728);
-    const checkEmoji = String.fromCodePoint(0x2705);
-    const tagEmoji = String.fromCodePoint(0x1f516);
-    const moneyEmoji = String.fromCodePoint(0x1f4b0);
-    const receiptEmoji = String.fromCodePoint(0x1f4e6);
-
-    let message = `${shopEmoji} *VINAYAKA MEDICALS* ${shopEmoji}\n\n`;
-    message += `${checkEmoji} Here are your invoice details!\n\n`;
-    message += `Subtotal: ₹${localSubtotal.toFixed(2)}\n`;
-
-    if (localCalculatedDiscount > 0) {
-      message += `Discount Applied: -₹${localCalculatedDiscount.toFixed(2)}\n`;
-    }
-
-    if (applyGST && localGstAmount > 0) {
-      message += `GST (${gstPercentage}%): ₹${localGstAmount.toFixed(2)}\n`;
-    }
-
-    if (deliveryFee > 0) {
-      message += `Delivery Fee: ₹${deliveryFee.toFixed(2)}\n`;
-    }
-
-    message += `\n${moneyEmoji} *Total Amount: ₹${localGrandTotal.toFixed(2)}*\n\n`;
-    message += `${receiptEmoji} View and download your detailed digital receipt here:\n${invoiceUrl}`;
-
-    const localItems = [
-      ...itemsToSave.map((i) => ({
-        id: i.id,
-        name: i.name,
-        desc: i.desc,
-        price: i.price,
-        qty: i.qty,
-      })),
-    ];
-    if (applyGST && gstAmount > 0) {
-      localItems.push({
-        id: `gst-${Date.now()}`,
-        name: `GST (${gstPercentage}%)`,
-        desc: "Tax",
-        price: gstAmount,
-        qty: 1,
-      });
-    }
+    let savedOrder: CompletedOrder | null = null;
 
     if (createdOrder) {
-      const mappedOrder = {
+      // Coerce every numeric field to a Number. Postgres NUMERIC columns come
+      // back as strings via the Neon driver; leaving them as strings makes the
+      // analytics reducers concatenate (e.g. "0" + "150" + "200") instead of
+      // adding, which is what produced the absurdly long revenue/offline totals.
+      const mappedOrder: CompletedOrder = {
         id: createdOrder.id,
         customerName: createdOrder.customer_name || "Guest",
         customerPhone: createdOrder.customer_phone,
@@ -1123,24 +1087,26 @@ export default function POSBilling() {
           id: i.id,
           name: i.snapshot_name,
           desc: i.snapshot_name === "Custom Item" ? "Custom" : "",
-          price: i.snapshot_price,
-          qty: i.quantity,
+          price: Number(i.snapshot_price) || 0,
+          qty: Number(i.quantity) || 0,
         })),
-        subtotal: createdOrder.subtotal,
-        discount: createdOrder.discount_amount,
+        subtotal: Number(createdOrder.subtotal) || 0,
+        discount: Number(createdOrder.discount_amount) || 0,
         discountType: createdOrder.discount_type,
-        discountValue: createdOrder.discount_value,
-        deliveryFee: createdOrder.delivery_fee,
-        grandTotal: createdOrder.grand_total,
-        cashReceived: createdOrder.cash_received,
+        discountValue: createdOrder.discount_value
+          ? Number(createdOrder.discount_value)
+          : undefined,
+        deliveryFee: Number(createdOrder.delivery_fee) || 0,
+        grandTotal: Number(createdOrder.grand_total) || 0,
+        cashReceived: Number(createdOrder.cash_received) || 0,
         date: createdOrder.bill_date,
-        status: (createdOrder.status === "COMPLETED"
-          ? "Completed"
-          : "Pending") as "Completed" | "Pending",
+        createdAt: createdOrder.created_at,
+        status: createdOrder.status === "COMPLETED" ? "Completed" : "Pending",
       };
 
       setOrders((prev) => [mappedOrder, ...prev]);
       setCompletedBillData(mappedOrder as any);
+      savedOrder = mappedOrder;
     }
 
     // Reset Form
@@ -1153,6 +1119,14 @@ export default function POSBilling() {
     setCashReceived(0);
     setApplyGST(false);
     setGstPercentage(18);
+
+    return savedOrder;
+  };
+
+  // Completes the sale first, then shares the saved bill over WhatsApp.
+  const handleCompleteAndSendWhatsApp = async () => {
+    const order = await completeSale();
+    if (order) resendWhatsApp(order);
   };
 
   const resendWhatsApp = (order: CompletedOrder) => {
@@ -1615,10 +1589,37 @@ export default function POSBilling() {
     );
   });
 
+  // Products with a stock problem (out of stock or at/below threshold), kept
+  // separate from near-expiry items so we can raise a stock alarm proactively.
+  const stockProblemItems = inventoryProducts.filter((c) => {
+    const threshold =
+      typeof c.lowStockThreshold === "number" ? c.lowStockThreshold : 10;
+    const stock = typeof c.stockQuantity === "number" ? c.stockQuantity : 0;
+    return stock <= threshold;
+  });
+  const outOfStockCount = stockProblemItems.filter(
+    (c) => (typeof c.stockQuantity === "number" ? c.stockQuantity : 0) <= 0,
+  ).length;
+
   const lowStockKey = lowStockItems
     .map((c) => c.id)
     .sort()
     .join("|");
+
+  // Surface the stock alarm automatically once, right after inventory loads,
+  // so out-of-stock / low-stock items are never missed even if the operator
+  // never opens the Alerts tab.
+  const initialStockAlertShownRef = useRef(false);
+  useEffect(() => {
+    if (initialStockAlertShownRef.current) return;
+    if (!isAuthorized || catalog.length === 0) return;
+    initialStockAlertShownRef.current = true;
+    if (stockProblemItems.length > 0) {
+      setLowStockAlertProducts(lowStockItems);
+      setShowLowStockAlertModal(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthorized, catalog.length]);
 
   useEffect(() => {
     if (!isAuthorized || lowStockItems.length === 0) return;
@@ -1902,13 +1903,18 @@ export default function POSBilling() {
     const rows = historyFilteredOrders.map((o) => {
       const itemsStr = o.items.map((i) => `${i.name} (x${i.qty})`).join("; ");
 
-      // Formatting date: MM/DD/YYYY HH:MM AM/PM as an Excel text formula to prevent ### errors
-      const dateObj = new Date(o.date);
-      const dateStr = dateObj.toLocaleDateString();
-      const timeStr = dateObj.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      // Formatting date: MM/DD/YYYY HH:MM AM/PM as an Excel text formula to prevent ### errors.
+      // Date comes from the (backdatable) bill_date; the time comes from the real
+      // transaction timestamp (created_at) rendered in IST.
+      const dateStr = new Date(o.date).toLocaleDateString("en-IN");
+      const timeStr = new Date(o.createdAt || o.date).toLocaleTimeString(
+        "en-IN",
+        {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Asia/Kolkata",
+        },
+      );
       const formattedDate = `"=""${dateStr} ${timeStr}"""`;
 
       // Formatting phone number as an Excel text formula to prevent scientific notation
@@ -2579,9 +2585,10 @@ export default function POSBilling() {
           )}
         </header>
 
-        {activeTab === "billing" &&
-          (completedBillData ? (
-            <div className="flex-1 flex flex-col gap-4 max-w-[640px] min-w-0 mx-auto w-full py-2 animate-in fade-in duration-200">
+        {/* Bill Generated — shown as a modal over the billing screen (not a new page) */}
+        {activeTab === "billing" && completedBillData && (
+          <div className="fixed inset-0 z-[390] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="flex flex-col gap-4 w-full max-w-[640px] min-w-0 bg-white rounded-2xl shadow-2xl p-4 sm:p-5 max-h-[94vh] overflow-y-auto animate-in zoom-in-95 duration-200">
               {/* Header Bar */}
               <div className="flex justify-between items-center pb-2 border-b border-black/10">
                 <div>
@@ -2708,7 +2715,10 @@ export default function POSBilling() {
                 </div>
               </div>
             </div>
-          ) : (
+          </div>
+        )}
+
+        {activeTab === "billing" && (
             <div className="flex-1 flex flex-col gap-6 max-w-[1400px] min-w-0 mx-auto w-full">
               {/* Subheader Accent Bar and Title */}
               <div className="flex justify-between items-center py-2 border-b border-black/10 w-full">
@@ -3347,9 +3357,20 @@ export default function POSBilling() {
                         </div>
                       )}
 
-                      {/* Send Bill Button */}
+                      {/* Complete Sale — saves the order to the database. This is
+                          the authoritative "sale done" action; WhatsApp below is
+                          purely for sharing the already-saved bill. */}
                       <button
-                        onClick={() => handleSendWhatsApp("business")}
+                        onClick={() => completeSale()}
+                        className="w-full mt-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white py-3 rounded-lg font-black text-[11px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-transform active:scale-[0.98] shadow-[0_4px_14px_rgba(220,38,38,0.35)] cursor-pointer"
+                      >
+                        <Check className="w-4 h-4" />
+                        Complete Sale
+                      </button>
+
+                      {/* Send Bill Button — completes/saves the sale, then shares it */}
+                      <button
+                        onClick={handleCompleteAndSendWhatsApp}
                         className="w-full mt-2 bg-[#10B981] hover:bg-[#059669] text-white py-3 rounded-lg font-bold text-[10px] uppercase tracking-[0.1em] flex items-center justify-center gap-2 transition-transform active:scale-[0.98] shadow-[0_4px_14px_rgba(16,185,129,0.4)] cursor-pointer"
                       >
                         <svg
@@ -3366,7 +3387,7 @@ export default function POSBilling() {
                 </div>
               </div>
             </div>
-          ))}
+          )}
 
         {activeTab === "orders" && (
           <div className="flex-1 flex flex-col max-w-[1400px] mx-auto w-full pb-8 pr-2 animate-in fade-in duration-300">
@@ -3590,13 +3611,13 @@ export default function POSBilling() {
                                   },
                                 )}
                                 <span className="block text-[10px] font-semibold text-black/60">
-                                  {new Date(order.date).toLocaleTimeString(
-                                    "en-US",
-                                    {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    },
-                                  )}
+                                  {new Date(
+                                    order.createdAt || order.date,
+                                  ).toLocaleTimeString("en-IN", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    timeZone: "Asia/Kolkata",
+                                  })}
                                 </span>
                               </td>
                               <td className="p-4 text-xs font-bold text-[#000000]">
@@ -4093,7 +4114,11 @@ export default function POSBilling() {
                       </div>
                     </div>
                     <div className="text-xl font-black text-[#000000] mb-1">
-                      ₹{totalRevenueAmount.toLocaleString()}
+                      ₹
+                      {totalRevenueAmount.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </div>
                     <div className="text-[9px] text-[#000000] font-semibold">
                       POS + manual combined
@@ -4127,7 +4152,11 @@ export default function POSBilling() {
                       </div>
                     </div>
                     <div className="text-xl font-black text-[#000000] mb-1">
-                      ₹{offlineRevenue.toLocaleString()}
+                      ₹
+                      {offlineRevenue.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </div>
                     <div className="text-[9px] text-[#000000] font-semibold">
                       Walk-in POS sales
@@ -4144,7 +4173,11 @@ export default function POSBilling() {
                       </div>
                     </div>
                     <div className="text-xl font-black text-[#000000] mb-1">
-                      ₹{onlineRevenue.toLocaleString()}
+                      ₹
+                      {onlineRevenue.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </div>
                     <div className="text-[9px] text-[#000000] font-semibold">
                       Online POS sales
@@ -4782,9 +4815,17 @@ export default function POSBilling() {
                   run out.
                 </p>
               </div>
-              <div className="text-xs font-bold text-[#000000] bg-[#FFFFFF] border border-black/10 px-4 py-2 rounded-lg">
-                {lowStockItems.length} alert
-                {lowStockItems.length === 1 ? "" : "s"}
+              <div className="flex items-center gap-2">
+                {outOfStockCount > 0 && (
+                  <div className="flex items-center gap-1.5 text-xs font-black text-white bg-[#E11D48] px-4 py-2 rounded-lg">
+                    <PackageX className="w-3.5 h-3.5" />
+                    {outOfStockCount} out of stock
+                  </div>
+                )}
+                <div className="text-xs font-bold text-[#000000] bg-[#FFFFFF] border border-black/10 px-4 py-2 rounded-lg">
+                  {lowStockItems.length} alert
+                  {lowStockItems.length === 1 ? "" : "s"}
+                </div>
               </div>
             </div>
 
@@ -4833,7 +4874,8 @@ export default function POSBilling() {
                             ? p.lowStockThreshold
                             : 10;
                         const days = daysUntil(p.expiryDate);
-                        const isLow = stock <= threshold;
+                        const isOut = stock <= 0;
+                        const isLow = !isOut && stock <= threshold;
                         const isExpired = days !== null && days < 0;
                         const isExpiringSoon =
                           days !== null && days >= 0 && days <= 30;
@@ -4852,7 +4894,7 @@ export default function POSBilling() {
                               )}
                             </td>
                             <td
-                              className={`p-3 text-center text-sm font-black ${isLow ? "text-[#E11D48]" : "text-[#000000]"}`}
+                              className={`p-3 text-center text-sm font-black ${isOut || isLow ? "text-[#E11D48]" : "text-[#000000]"}`}
                             >
                               {stock}
                             </td>
@@ -4873,8 +4915,14 @@ export default function POSBilling() {
                             </td>
                             <td className="p-3 text-center">
                               <div className="flex flex-col gap-1 items-center">
+                                {isOut && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-white bg-[#E11D48] px-2 py-1 rounded">
+                                    <PackageX className="w-3 h-3" />
+                                    Out of Stock
+                                  </span>
+                                )}
                                 {isLow && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-[#E11D48] bg-[#E11D48]/10 px-2 py-1 rounded">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-[#B45309] bg-[#F59E0B]/20 px-2 py-1 rounded">
                                     Low Stock
                                   </span>
                                 )}
@@ -5467,19 +5515,54 @@ export default function POSBilling() {
                   </button>
                 </div>
                 <p className="text-sm font-semibold text-black/70">
-                  The following products have low or zero stock nu please:
+                  Some products need restocking. Please review the out-of-stock
+                  and low-stock items below.
                 </p>
               </div>
               <div className="max-h-[60vh] overflow-y-auto p-2 bg-gray-50/50">
                 <ul className="space-y-2 p-2">
-                  {lowStockAlertProducts.map((p) => (
-                    <li key={p.id} className="bg-white p-3 rounded-lg border border-black/5 flex justify-between items-center shadow-sm">
-                      <span className="text-xs font-bold text-black">{p.name}</span>
-                      <span className="text-xs font-black text-[#E11D48]">
-                        Stock: {typeof p.stockQuantity === 'number' ? p.stockQuantity : 0}
-                      </span>
-                    </li>
-                  ))}
+                  {lowStockAlertProducts.map((p) => {
+                    const stock =
+                      typeof p.stockQuantity === "number" ? p.stockQuantity : 0;
+                    const threshold =
+                      typeof p.lowStockThreshold === "number"
+                        ? p.lowStockThreshold
+                        : 10;
+                    const isOut = stock <= 0;
+                    const isLow = !isOut && stock <= threshold;
+                    return (
+                      <li
+                        key={p.id}
+                        className="bg-white p-3 rounded-lg border border-black/5 flex justify-between items-center gap-3 shadow-sm"
+                      >
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold text-black truncate">
+                            {p.name}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1 mt-1 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                              isOut
+                                ? "text-white bg-[#E11D48]"
+                                : isLow
+                                  ? "text-[#B45309] bg-[#F59E0B]/20"
+                                  : "text-[#D97706] bg-[#D97706]/10"
+                            }`}
+                          >
+                            {isOut
+                              ? "Out of Stock"
+                              : isLow
+                                ? "Low Stock"
+                                : "Expiring Soon"}
+                          </span>
+                        </div>
+                        <span
+                          className={`text-xs font-black shrink-0 ${isOut ? "text-[#E11D48]" : "text-black"}`}
+                        >
+                          Stock: {stock}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
               <div className="p-4 border-t border-black/10 bg-white">

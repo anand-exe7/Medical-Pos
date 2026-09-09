@@ -41,8 +41,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <InvoiceActions />
       </div>
 
-      {/* The Invoice Document */}
-      <div className="w-full max-w-3xl bg-white border border-[#DC2626]/30 rounded-2xl shadow-xl print:shadow-none print:border-none print:rounded-none overflow-hidden">
+      {/* The Invoice Document — full-height flex column so the footer is pinned
+          to the bottom of the page instead of floating below the totals. */}
+      <div className="w-full max-w-3xl bg-white border border-[#DC2626]/30 rounded-2xl shadow-xl print:shadow-none print:border-none print:rounded-none overflow-hidden flex flex-col min-h-[calc(100vh-8rem)] print:min-h-[calc(100vh-20mm)]">
         
         {/* Header Section */}
         <div className="bg-[#ffffff] border-b border-[#e5e5e5] p-8 sm:p-12 print:p-6 flex flex-col items-center text-center relative">
@@ -82,11 +83,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <div className="inline-block text-left text-sm space-y-1">
               <div className="flex gap-2">
                 <span className="text-[#666666] font-bold w-12 text-left sm:text-right">Date:</span>
-                <span className="text-[#000000] font-black">{new Date(order.bill_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span className="text-[#000000] font-black">{new Date(order.bill_date).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Kolkata' })}</span>
               </div>
               <div className="flex gap-2">
                 <span className="text-[#666666] font-bold w-12 text-left sm:text-right">Time:</span>
-                <span className="text-[#000000] font-black">{new Date(order.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="text-[#000000] font-black">{new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}</span>
               </div>
               <div className="flex gap-2">
                 <span className="text-[#666666] font-bold w-12 text-left sm:text-right">Type:</span>
@@ -169,8 +170,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               </div>
             </div>
         </div>
-        {/* Footer */}
-        <div className="border-t border-[#e5e5e5]/60 p-6 print:p-4 text-center bg-[#fafafa] flex flex-col items-center justify-center gap-1.5">
+        {/* Footer — mt-auto keeps it anchored to the bottom of the page */}
+        <div className="mt-auto border-t border-[#e5e5e5]/60 p-6 print:p-4 text-center bg-[#fafafa] flex flex-col items-center justify-center gap-1.5">
           <p className="text-xs font-bold text-[#DC2626] tracking-wider uppercase">Thank you for shopping!</p>
           <p className="text-[9px] font-bold text-[#666666]/80 uppercase tracking-[0.15em]">Powered by Cenexa Systems @2026</p>
         </div>

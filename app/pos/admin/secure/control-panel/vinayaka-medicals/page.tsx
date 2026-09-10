@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   User,
   Receipt,
@@ -1606,6 +1606,73 @@ export default function POSBilling() {
     .sort()
     .join("|");
 
+  // One shared AudioContext for the whole session. Browsers block audio until
+  // the user interacts with the page and start the context "suspended", so we
+  // keep a single context around and resume it — otherwise the modal that
+  // auto-pops on the billing/home tab would stay silent (no fresh click before
+  // it fires), while the Alerts tab worked only because clicking the tab is
+  // itself the unlocking gesture.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const getAudioContext = useCallback((): AudioContext | null => {
+    if (typeof window === "undefined") return null;
+    const AudioCtx =
+      (window as unknown as { AudioContext?: typeof AudioContext })
+        .AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioCtx();
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  // Plays the three-tone stock-alarm chime. Extracted so both the initial
+  // "new low-stock item" beep and the repeating alarm-clock loop can reuse it.
+  const playStockAlertBeep = useCallback(() => {
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      // If the browser left it suspended (autoplay policy), try to resume; once
+      // a user gesture has happened this succeeds and stays running.
+      if (ctx.state === "suspended") void ctx.resume();
+      const now = ctx.currentTime;
+      [0, 0.18, 0.36].forEach((offset) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(880, now + offset);
+        gain.gain.setValueAtTime(0.001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.15, now + offset + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.14);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.16);
+      });
+    } catch (err) {
+      console.warn("Alert beep failed:", err);
+    }
+  }, [getAudioContext]);
+
+  // Unlock audio on the very first user interaction anywhere on the page, so
+  // alarms triggered automatically afterwards (the stock modal on load) are
+  // actually audible. Listeners stay attached so audio re-unlocks if the
+  // context is ever re-suspended (e.g. after the tab is backgrounded).
+  useEffect(() => {
+    const unlock = () => {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === "suspended") void ctx.resume();
+    };
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    window.addEventListener("touchstart", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
+    };
+  }, [getAudioContext]);
+
   // Surface the stock alarm automatically once, right after inventory loads,
   // so out-of-stock / low-stock items are never missed even if the operator
   // never opens the Alerts tab.
@@ -1627,40 +1694,24 @@ export default function POSBilling() {
     const hasNew = currentIds.some((id) => !alertedIds.has(id));
     if (!hasNew) return;
 
-    try {
-      const AudioCtx =
-        (
-          window as unknown as {
-            AudioContext?: typeof AudioContext;
-            webkitAudioContext?: typeof AudioContext;
-          }
-        ).AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
-        const now = ctx.currentTime;
-        [0, 0.18, 0.36].forEach((offset) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "square";
-          osc.frequency.setValueAtTime(880, now + offset);
-          gain.gain.setValueAtTime(0.001, now + offset);
-          gain.gain.exponentialRampToValueAtTime(0.15, now + offset + 0.01);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.14);
-          osc.connect(gain).connect(ctx.destination);
-          osc.start(now + offset);
-          osc.stop(now + offset + 0.16);
-        });
-        setTimeout(() => ctx.close().catch(() => {}), 800);
-      }
-    } catch (err) {
-      console.warn("Alert beep failed:", err);
-    }
+    playStockAlertBeep();
 
     setAlertedIds(new Set(currentIds));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthorized, lowStockKey]);
+
+  // Alarm-clock style: while the stock-alert modal is open, keep replaying the
+  // three-tone chime on a tight loop (like an alarm going off) until the
+  // operator dismisses the modal. Driven purely by the modal being open, so it
+  // rings on every tab — including the home / billing page.
+  useEffect(() => {
+    if (!showLowStockAlertModal) return;
+    playStockAlertBeep(); // ring immediately when the modal appears
+    const id = window.setInterval(() => {
+      playStockAlertBeep();
+    }, 1000); // re-ring every second until dismissed
+    return () => window.clearInterval(id);
+  }, [showLowStockAlertModal, playStockAlertBeep]);
 
   useEffect(() => {
     if (activeTab === "alerts") {
